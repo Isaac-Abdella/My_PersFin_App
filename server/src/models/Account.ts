@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IAccount extends Document {
   userId: mongoose.Types.ObjectId;
   name: string;
-  type: "checking" | "savings" | "credit" | "investment" | "other";
+  type: "chequing" | "checking" | "savings" | "credit-card" | "tfsa" | "rrsp" | "gic" | "line-of-credit" | "student-loan" | "mortgage" | "auto-loan" | "personal-loan" | "investment" | "other";
   balance: number;
   currency: string;
   createdAt: Date;
@@ -14,7 +14,7 @@ const accountSchema = new Schema<IAccount>({
   name: { type: String, required: true },
   type: { 
     type: String, 
-    enum: ["checking", "savings", "credit", "investment", "other"],
+    enum: ["chequing", "checking", "savings", "credit-card", "tfsa", "rrsp", "gic", "line-of-credit", "student-loan", "mortgage", "auto-loan", "personal-loan", "investment", "other"],
     required: true 
   },
   balance: { type: Number, default: 0 },

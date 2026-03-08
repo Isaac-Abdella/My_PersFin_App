@@ -9,7 +9,7 @@ export interface Account {
   _id: string;
   userId: string;
   name: string;
-  type: "checking" | "savings" | "credit" | "investment" | "other";
+  type: "chequing" | "savings" | "credit-card" | "tfsa" | "rrsp" | "gic" | "line-of-credit" | "student-loan" | "mortgage" | "auto-loan" | "personal-loan" | "investment" | "other";
   balance: number;
   currency: string;
   createdAt: string;

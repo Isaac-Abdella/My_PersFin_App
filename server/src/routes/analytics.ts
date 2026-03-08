@@ -175,8 +175,20 @@ router.get("/overview", async (req: Request, res: Response) => {
       })
     ]);
 
-    const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
-    const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0);
+    const totalBalance = accounts.reduce((sum, a) => {
+      // For credit cards, the balance is amount OWED (liability), not an asset
+      if (a.type === "credit-card") {
+        return sum;  // Don't add credit card balance to assets
+      }
+      return sum + a.balance;
+    }, 0);
+    
+    // Calculate total credit card debt (amount owed)
+    const totalCreditCardDebt = accounts
+      .filter(a => a.type === "credit-card")
+      .reduce((sum, a) => sum + a.balance, 0);
+    
+    const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0) + totalCreditCardDebt;
     const netWorth = totalBalance - totalDebt;
 
     const totalMonthlyExpenses = monthlyExpenses.reduce((sum, t) => sum + t.amount, 0);

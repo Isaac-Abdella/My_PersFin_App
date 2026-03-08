@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { Account } from "../models/Account";
+import { Transaction } from "../models/Transaction";
 import { requireAuth } from "../middleware/requireLogin";
 
 const router = Router();
@@ -97,6 +98,56 @@ router.delete("/:id", async (req: Request, res: Response) => {
     return res.json({ message: "Account deleted" });
   } catch (err) {
     console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Recalculate all credit card balances from transactions
+router.post("/recalculate-credit-card-balances", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const creditCardAccounts = await Account.find({ userId, type: "credit-card" });
+
+    const results = [];
+
+    for (const account of creditCardAccounts) {
+      // Get all transactions for this account
+      const transactions = await Transaction.find({ userId, accountId: account._id });
+
+      // Calculate balance as amount owed
+      // Start from 0, debits (expenses) increase amount owed, credits (income/payments) decrease it
+      let balance = 0;
+      for (const tx of transactions) {
+        if (tx.type === "expense") {
+          balance += tx.amount;  // Purchases increase what you owe
+        } else if (tx.type === "income") {
+          balance -= tx.amount;  // Payments decrease what you owe
+        }
+      }
+
+      // Ensure balance never goes negative
+      balance = Math.max(0, balance);
+
+      account.balance = balance;
+      await account.save();
+
+      results.push({
+        accountId: account._id,
+        accountName: account.name,
+        transactionCount: transactions.length,
+        newBalance: balance
+      });
+
+      console.log(`[RECALC] Credit card "${account.name}": ${transactions.length} transactions, new balance: $${balance}`);
+    }
+
+    return res.json({
+      message: "Credit card balances recalculated",
+      accountsUpdated: results.length,
+      results
+    });
+  } catch (err) {
+    console.error("Error recalculating credit card balances:", err);
     return res.status(500).json({ message: "Server error" });
   }
 });

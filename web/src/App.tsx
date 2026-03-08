@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
+import TransactionDetail from "./pages/TransactionDetail";
 import Budgets from "./pages/Budgets";
 import Debts from "./pages/Debts";
 import Import from "./pages/Import";
@@ -35,6 +36,7 @@ function Layout() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/transactions/:id" element={<TransactionDetail />} />
           <Route path="/budgets" element={<Budgets />} />
           <Route path="/debts" element={<Debts />} />
           <Route path="/import" element={<Import />} />
