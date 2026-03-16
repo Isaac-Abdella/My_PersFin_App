@@ -182,20 +182,20 @@ router.get("/overview", async (req: Request, res: Response) => {
       }
       return sum + a.balance;
     }, 0);
-    
+
     // Calculate total credit card debt (amount owed)
     const totalCreditCardDebt = accounts
       .filter(a => a.type === "credit-card")
       .reduce((sum, a) => sum + a.balance, 0);
-    
+
     const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0) + totalCreditCardDebt;
     const netWorth = totalBalance - totalDebt;
 
     const totalMonthlyExpenses = monthlyExpenses.reduce((sum, t) => sum + t.amount, 0);
     const totalMonthlyIncome = monthlyIncome.reduce((sum, t) => sum + t.amount, 0);
     const monthlySavings = totalMonthlyIncome - totalMonthlyExpenses;
-    const savingsRate = totalMonthlyIncome > 0 
-      ? ((monthlySavings / totalMonthlyIncome) * 100).toFixed(1) 
+    const savingsRate = totalMonthlyIncome > 0
+      ? ((monthlySavings / totalMonthlyIncome) * 100).toFixed(1)
       : "0";
 
     return res.json({
@@ -244,7 +244,7 @@ router.get("/excess-spending", async (req: Request, res: Response) => {
       });
 
       const spent = transactions.reduce((sum, t) => sum + t.amount, 0);
-      
+
       if (spent > budget.amount) {
         alerts.push({
           category: budget.category,
@@ -252,7 +252,7 @@ router.get("/excess-spending", async (req: Request, res: Response) => {
           spent,
           excess: spent - budget.amount,
           percentOver: Math.round(((spent - budget.amount) / budget.amount) * 100),
-          severity: spent > budget.amount * 1.5 ? "high" : "medium"
+          severity: "high"
         });
       } else if (spent > budget.amount * 0.8) {
         // Warning if over 80% of budget
@@ -279,7 +279,7 @@ router.get("/excess-spending", async (req: Request, res: Response) => {
 router.post("/categorize-suggestion", async (req: Request, res: Response) => {
   try {
     const { description } = req.body;
-    
+
     if (!description) {
       return res.status(400).json({ message: "Description is required" });
     }

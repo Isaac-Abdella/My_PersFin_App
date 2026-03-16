@@ -1,11 +1,356 @@
-import { Router, Request, Response } from "express";
+﻿import { Router, Request, Response } from "express";
 import { Debt } from "../models/Debt";
 import { requireAuth } from "../middleware/requireLogin";
 
+type Cadence = "monthly" | "biweekly";
+type DueScheduleType = "specific" | "monthly" | "biweekly";
+
+type DebtCalc = {
+  id: string;
+  name: string;
+  balance: number;
+  interestRate: number;
+  minimumPayment: number;
+};
+
 const router = Router();
 
+function monthlyEquivalent(amount: number, cadence: Cadence): number {
+  return cadence === "biweekly" ? (amount * 26) / 12 : amount;
+}
+
+function cadenceEquivalentMonthly(amountMonthly: number, cadence: Cadence): number {
+  return cadence === "biweekly" ? (amountMonthly * 12) / 26 : amountMonthly;
+}
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+function calculatePayoffStrategy(
+  debts: DebtCalc[],
+  paymentPerCadence: number,
+  cadence: Cadence,
+  method: "avalanche" | "snowball",
+  extraPerCadence = 0
+) {
+  const debtsCopy = debts.map((d) => ({ ...d }));
+
+  if (method === "avalanche") {
+    debtsCopy.sort((a, b) => b.interestRate - a.interestRate);
+  } else {
+    debtsCopy.sort((a, b) => a.balance - b.balance);
+  }
+
+  const monthlyPaymentTotal = monthlyEquivalent(paymentPerCadence, cadence) + monthlyEquivalent(extraPerCadence, cadence);
+  const totalMinimumMonthly = debtsCopy.reduce((sum, d) => sum + d.minimumPayment, 0);
+
+  if (monthlyPaymentTotal < totalMinimumMonthly) {
+    return {
+      method,
+      error: "Payment is less than total minimum payments",
+      minimumRequiredMonthly: round2(totalMinimumMonthly)
+    };
+  }
+
+  const extraMonthly = monthlyPaymentTotal - totalMinimumMonthly;
+  let month = 0;
+  let totalInterestPaid = 0;
+  const payoffSchedule: Array<{ debtId: string; debtName: string; payoffMonth: number }> = [];
+
+  while (debtsCopy.some((d) => d.balance > 0.01) && month < 1200) {
+    month++;
+    let extraRemaining = extraMonthly;
+
+    for (const debt of debtsCopy) {
+      if (debt.balance <= 0.01) continue;
+
+      const monthlyRate = debt.interestRate / 100 / 12;
+      const interestCharge = debt.balance * monthlyRate;
+      totalInterestPaid += interestCharge;
+      debt.balance += interestCharge;
+
+      const minPay = Math.min(debt.minimumPayment, debt.balance);
+      debt.balance -= minPay;
+
+      if (debt.balance > 0.01 && extraRemaining > 0) {
+        const extra = Math.min(extraRemaining, debt.balance);
+        debt.balance -= extra;
+        extraRemaining -= extra;
+      }
+
+      if (debt.balance <= 0.01 && !payoffSchedule.some((p) => p.debtId === debt.id)) {
+        payoffSchedule.push({ debtId: debt.id, debtName: debt.name, payoffMonth: month });
+      }
+    }
+  }
+
+  const annualInterestEstimate = debts.reduce((sum, debt) => {
+    const monthlyRate = debt.interestRate / 100 / 12;
+    return sum + debt.balance * monthlyRate * 12;
+  }, 0);
+
+  return {
+    method,
+    cadence,
+    paymentPerCadence: round2(paymentPerCadence),
+    extraPerCadence: round2(extraPerCadence),
+    totalMonths: month,
+    totalYears: (month / 12).toFixed(1),
+    totalInterestPaid: round2(totalInterestPaid),
+    annualInterestEstimate: round2(annualInterestEstimate),
+    payoffSchedule
+  };
+}
+
+function buildPaymentOptimizer(debts: DebtCalc[], cadence: Cadence, paymentPerCadence: number) {
+  const monthlyBudget = monthlyEquivalent(paymentPerCadence, cadence);
+  const totalMin = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const extra = Math.max(0, monthlyBudget - totalMin);
+
+  const ranked = [...debts].sort((a, b) => b.interestRate - a.interestRate);
+
+  const allocations = ranked.map((debt, idx) => {
+    const monthlyAllocation = debt.minimumPayment + (idx === 0 ? extra : 0);
+    return {
+      debtId: debt.id,
+      debtName: debt.name,
+      interestRate: debt.interestRate,
+      recommendedPerCadence: round2(cadenceEquivalentMonthly(monthlyAllocation, cadence)),
+      minimumPerCadence: round2(cadenceEquivalentMonthly(debt.minimumPayment, cadence)),
+      focusDebt: idx === 0
+    };
+  });
+
+  return {
+    cadence,
+    paymentPerCadence: round2(paymentPerCadence),
+    totalMinimumPerCadence: round2(cadenceEquivalentMonthly(totalMin, cadence)),
+    extraPerCadence: round2(cadenceEquivalentMonthly(extra, cadence)),
+    allocations
+  };
+}
+
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function nextBiweeklyDate(anchorDate: Date, fromDate: Date) {
+  const anchor = startOfDay(anchorDate);
+  const from = startOfDay(fromDate);
+  if (anchor >= from) return anchor;
+
+  const diffDays = Math.floor((from.getTime() - anchor.getTime()) / (24 * 60 * 60 * 1000));
+  const cycles = Math.ceil(diffDays / 14);
+  const next = new Date(anchor);
+  next.setDate(anchor.getDate() + cycles * 14);
+  return startOfDay(next);
+}
+
+function nextMonthlyDate(anchorDate: Date, fromDate: Date) {
+  const anchor = startOfDay(anchorDate);
+  const from = startOfDay(fromDate);
+
+  const desiredDay = anchor.getDate();
+  const buildDate = (year: number, month: number) => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(desiredDay, daysInMonth));
+  };
+
+  let candidate = buildDate(from.getFullYear(), from.getMonth());
+  candidate = startOfDay(candidate);
+
+  if (candidate < from) {
+    candidate = buildDate(from.getFullYear(), from.getMonth() + 1);
+    candidate = startOfDay(candidate);
+  }
+
+  return candidate;
+}
+
+function computeNextDueDate(dueScheduleType: DueScheduleType, dueDate: Date | undefined, referenceDate: Date) {
+  if (!dueDate) return undefined;
+
+  const mode = dueScheduleType || "specific";
+  if (mode === "specific") {
+    const specific = startOfDay(new Date(dueDate));
+    return specific >= startOfDay(referenceDate) ? specific : undefined;
+  }
+  if (mode === "biweekly") {
+    return nextBiweeklyDate(new Date(dueDate), referenceDate);
+  }
+  return nextMonthlyDate(new Date(dueDate), referenceDate);
+}
 // All routes require authentication
 router.use(requireAuth);
+
+router.get("/dashboard", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const debts = await Debt.find({ userId }).sort({ interestRate: -1 });
+
+    const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0);
+    const totalMinimumPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
+    const weightedInterestRate = totalDebt > 0
+      ? debts.reduce((sum, d) => sum + d.currentBalance * d.interestRate, 0) / totalDebt
+      : 0;
+
+    const monthlyInterestEstimate = debts.reduce((sum, d) => sum + d.currentBalance * (d.interestRate / 100 / 12), 0);
+    const annualInterestEstimate = monthlyInterestEstimate * 12;
+
+    const today = startOfDay(new Date());
+    const inThirtyDays = new Date(today);
+    inThirtyDays.setDate(inThirtyDays.getDate() + 30);
+
+    const upcomingDue = debts
+      .map((d) => {
+        const plainDebt = d.toObject() as any;
+        const scheduleType = (plainDebt.dueScheduleType || "specific") as DueScheduleType;
+        const nextDueDate = computeNextDueDate(scheduleType, plainDebt.dueDate ? new Date(plainDebt.dueDate) : undefined, today);
+        return {
+          ...plainDebt,
+          dueScheduleType: scheduleType,
+          nextDueDate
+        };
+      })
+      .filter((d: any) => d.nextDueDate && d.nextDueDate >= today && d.nextDueDate <= inThirtyDays)
+      .sort((a: any, b: any) => (a.nextDueDate as Date).getTime() - (b.nextDueDate as Date).getTime());
+
+    return res.json({
+      totals: {
+        totalDebt: round2(totalDebt),
+        totalMinimumPayment: round2(totalMinimumPayment),
+        weightedInterestRate: round2(weightedInterestRate),
+        monthlyInterestEstimate: round2(monthlyInterestEstimate),
+        annualInterestEstimate: round2(annualInterestEstimate)
+      },
+      upcomingDue,
+      count: debts.length
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Calculate debt payoff strategies
+router.get("/payoff/strategies", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const paymentAmountRaw = req.query.paymentAmount || req.query.monthlyPayment;
+    const cadence = ((req.query.cadence as string) || "monthly") as Cadence;
+    const extraPayment = Number(req.query.extraPayment || 0);
+
+    if (!paymentAmountRaw) {
+      return res.status(400).json({ message: "paymentAmount is required" });
+    }
+
+    if (!["monthly", "biweekly"].includes(cadence)) {
+      return res.status(400).json({ message: "cadence must be monthly or biweekly" });
+    }
+
+    const paymentAmount = Number(paymentAmountRaw);
+    if (!isFinite(paymentAmount) || paymentAmount <= 0) {
+      return res.status(400).json({ message: "paymentAmount must be a positive number" });
+    }
+
+    const debts = await Debt.find({ userId });
+    const debtCalcs: DebtCalc[] = debts.map((d) => ({
+      id: d._id.toString(),
+      name: d.name,
+      balance: d.currentBalance,
+      interestRate: d.interestRate,
+      minimumPayment: d.minimumPayment
+    }));
+
+    if (debtCalcs.length === 0) {
+      return res.json({ avalanche: null, snowball: null, totalDebts: 0, totalMinimumPayment: 0 });
+    }
+
+    const avalanche = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "avalanche", extraPayment);
+    const snowball = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "snowball", extraPayment);
+
+    return res.json({
+      avalanche,
+      snowball,
+      cadence,
+      paymentAmount,
+      extraPayment,
+      totalDebts: round2(debtCalcs.reduce((sum, d) => sum + d.balance, 0)),
+      totalMinimumPayment: round2(cadenceEquivalentMonthly(debtCalcs.reduce((sum, d) => sum + d.minimumPayment, 0), cadence))
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/payoff/optimizer", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const cadence = ((req.query.cadence as string) || "biweekly") as Cadence;
+    const paymentAmount = Number(req.query.paymentAmount || 0);
+
+    if (!isFinite(paymentAmount) || paymentAmount <= 0) {
+      return res.status(400).json({ message: "paymentAmount must be positive" });
+    }
+
+    const debts = await Debt.find({ userId });
+    const debtCalcs: DebtCalc[] = debts.map((d) => ({
+      id: d._id.toString(),
+      name: d.name,
+      balance: d.currentBalance,
+      interestRate: d.interestRate,
+      minimumPayment: d.minimumPayment
+    }));
+
+    return res.json(buildPaymentOptimizer(debtCalcs, cadence, paymentAmount));
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/payoff/what-if", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const cadence = ((req.query.cadence as string) || "biweekly") as Cadence;
+    const paymentAmount = Number(req.query.paymentAmount || 0);
+    const extraPayment = Number(req.query.extraPayment || 0);
+
+    if (!isFinite(paymentAmount) || paymentAmount <= 0) {
+      return res.status(400).json({ message: "paymentAmount must be positive" });
+    }
+
+    const debts = await Debt.find({ userId });
+    const debtCalcs: DebtCalc[] = debts.map((d) => ({
+      id: d._id.toString(),
+      name: d.name,
+      balance: d.currentBalance,
+      interestRate: d.interestRate,
+      minimumPayment: d.minimumPayment
+    }));
+
+    const baseline = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "avalanche", 0);
+    const scenario = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "avalanche", extraPayment);
+
+    if ((baseline as any).error || (scenario as any).error) {
+      return res.json({ baseline, scenario, comparison: null });
+    }
+
+    const comparison = {
+      monthsSaved: (baseline as any).totalMonths - (scenario as any).totalMonths,
+      interestSaved: round2((baseline as any).totalInterestPaid - (scenario as any).totalInterestPaid)
+    };
+
+    return res.json({ baseline, scenario, comparison });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
 
 // Get all debts for the logged-in user
 router.get("/", async (req: Request, res: Response) => {
@@ -24,11 +369,11 @@ router.get("/:id", async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any).id;
     const debt = await Debt.findOne({ _id: req.params.id, userId });
-    
+
     if (!debt) {
       return res.status(404).json({ message: "Debt not found" });
     }
-    
+
     return res.json(debt);
   } catch (err) {
     console.error(err);
@@ -36,134 +381,16 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 });
 
-// Calculate debt payoff strategies
-router.get("/payoff/strategies", async (req: Request, res: Response) => {
-  try {
-    const userId = (req.user as any).id;
-    const { monthlyPayment } = req.query;
-
-    if (!monthlyPayment) {
-      return res.status(400).json({ message: "Monthly payment amount is required" });
-    }
-
-    const payment = parseFloat(monthlyPayment as string);
-    const debts = await Debt.find({ userId });
-
-    if (debts.length === 0) {
-      return res.json({ avalanche: [], snowball: [] });
-    }
-
-    // Avalanche Method: Pay highest interest rate first
-    const avalanche = calculatePayoffStrategy(debts, payment, "avalanche");
-
-    // Snowball Method: Pay lowest balance first
-    const snowball = calculatePayoffStrategy(debts, payment, "snowball");
-
-    return res.json({
-      avalanche,
-      snowball,
-      totalDebts: debts.reduce((sum, d) => sum + d.currentBalance, 0),
-      totalMinimumPayment: debts.reduce((sum, d) => sum + d.minimumPayment, 0)
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
-  }
-});
-
-// Helper function to calculate payoff strategy
-function calculatePayoffStrategy(
-  debts: any[],
-  monthlyPayment: number,
-  method: "avalanche" | "snowball"
-) {
-  const debtsCopy = debts.map(d => ({
-    id: d._id,
-    name: d.name,
-    balance: d.currentBalance,
-    interestRate: d.interestRate,
-    minimumPayment: d.minimumPayment
-  }));
-
-  // Sort based on strategy
-  if (method === "avalanche") {
-    // Highest interest rate first
-    debtsCopy.sort((a, b) => b.interestRate - a.interestRate);
-  } else {
-    // Lowest balance first
-    debtsCopy.sort((a, b) => a.balance - b.balance);
-  }
-
-  const totalMinimumPayment = debtsCopy.reduce((sum, d) => sum + d.minimumPayment, 0);
-  if (monthlyPayment < totalMinimumPayment) {
-    return {
-      error: "Monthly payment is less than total minimum payments",
-      minimumRequired: totalMinimumPayment
-    };
-  }
-
-  const extraPayment = monthlyPayment - totalMinimumPayment;
-  let month = 0;
-  let totalInterestPaid = 0;
-  const payoffSchedule = [];
-
-  while (debtsCopy.some(d => d.balance > 0) && month < 600) { // Max 50 years
-    month++;
-    let extraRemaining = extraPayment;
-
-    for (const debt of debtsCopy) {
-      if (debt.balance <= 0) continue;
-
-      // Calculate monthly interest
-      const monthlyInterestRate = debt.interestRate / 100 / 12;
-      const interestCharge = debt.balance * monthlyInterestRate;
-      totalInterestPaid += interestCharge;
-
-      // Add interest to balance
-      debt.balance += interestCharge;
-
-      // Make minimum payment
-      let payment = Math.min(debt.minimumPayment, debt.balance);
-      debt.balance -= payment;
-
-      // If this is the focus debt, add extra payment
-      if (debt.balance > 0 && extraRemaining > 0) {
-        const extraForThisDebt = Math.min(extraRemaining, debt.balance);
-        debt.balance -= extraForThisDebt;
-        extraRemaining -= extraForThisDebt;
-        payment += extraForThisDebt;
-      }
-
-      if (debt.balance <= 0) {
-        payoffSchedule.push({
-          debtId: debt.id,
-          debtName: debt.name,
-          payoffMonth: month
-        });
-      }
-    }
-  }
-
-  return {
-    method,
-    totalMonths: month,
-    totalYears: (month / 12).toFixed(1),
-    totalInterestPaid: Math.round(totalInterestPaid),
-    payoffSchedule,
-    monthlyPayment
-  };
-}
-
 // Create new debt
 router.post("/", async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any).id;
-    const { name, type, principal, currentBalance, interestRate, minimumPayment, dueDate, accountNumber, lender } = req.body;
+    const { name, type, principal, currentBalance, interestRate, minimumPayment, dueDate, dueScheduleType, accountNumber, lender } = req.body;
 
-    if (!name || !type || principal === undefined || currentBalance === undefined || 
+    if (!name || !type || principal === undefined || currentBalance === undefined ||
         interestRate === undefined || minimumPayment === undefined) {
-      return res.status(400).json({ 
-        message: "Name, type, principal, current balance, interest rate, and minimum payment are required" 
+      return res.status(400).json({
+        message: "Name, type, principal, current balance, interest rate, and minimum payment are required"
       });
     }
 
@@ -175,6 +402,7 @@ router.post("/", async (req: Request, res: Response) => {
       currentBalance,
       interestRate,
       minimumPayment,
+      dueScheduleType: (["specific", "monthly", "biweekly"].includes(dueScheduleType) ? dueScheduleType : "specific"),
       dueDate: dueDate ? new Date(dueDate) : undefined,
       accountNumber,
       lender
@@ -191,20 +419,27 @@ router.post("/", async (req: Request, res: Response) => {
 router.put("/:id", async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any).id;
-    const { name, type, principal, currentBalance, interestRate, minimumPayment, dueDate, accountNumber, lender } = req.body;
+    const { name, type, principal, currentBalance, interestRate, minimumPayment, dueDate, dueScheduleType, accountNumber, lender } = req.body;
 
-    const updateData: any = { 
-      name, 
-      type, 
-      principal, 
-      currentBalance, 
-      interestRate, 
+    const updateData: any = {
+      name,
+      type,
+      principal,
+      currentBalance,
+      interestRate,
       minimumPayment,
       accountNumber,
       lender
     };
-    
-    if (dueDate) updateData.dueDate = new Date(dueDate);
+
+    if (["specific", "monthly", "biweekly"].includes(dueScheduleType)) {
+      updateData.dueScheduleType = dueScheduleType;
+    }
+    if (dueDate) {
+      updateData.dueDate = new Date(dueDate);
+    } else if (dueDate === null || dueDate === "") {
+      updateData.dueDate = undefined;
+    }
 
     const debt = await Debt.findOneAndUpdate(
       { _id: req.params.id, userId },
@@ -266,3 +501,9 @@ router.delete("/:id", async (req: Request, res: Response) => {
 });
 
 export default router;
+
+
+
+
+
+

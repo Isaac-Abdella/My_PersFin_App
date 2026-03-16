@@ -4,6 +4,43 @@ import { Transaction } from "../models/Transaction";
 import { requireAuth } from "../middleware/requireLogin";
 
 const router = Router();
+const LIABILITY_TYPES = new Set([
+  "credit-card",
+  "line-of-credit",
+  "student-loan",
+  "mortgage",
+  "auto-loan",
+  "personal-loan"
+]);
+
+function getBalanceDelta(
+  accountType: string,
+  transactionType: "income" | "expense" | "transfer",
+  amount: number
+): number {
+  if (transactionType === "transfer") return 0;
+  const baseDelta = transactionType === "income" ? amount : -amount;
+  return LIABILITY_TYPES.has(accountType) ? -baseDelta : baseDelta;
+}
+
+async function getRecalculatedAccountBalance(userId: string, accountId: string, accountType: string): Promise<number> {
+  const txns = await Transaction.find({ userId, accountId });
+  if (txns.length === 0) return 0;
+
+  if (LIABILITY_TYPES.has(accountType)) {
+    const latestStatementTxn = await Transaction.findOne({
+      userId,
+      accountId,
+      statementBalance: { $ne: null }
+    }).sort({ date: -1, createdAt: -1, _id: -1 });
+
+    if (latestStatementTxn && typeof (latestStatementTxn as any).statementBalance === "number") {
+      return Math.max(0, (latestStatementTxn as any).statementBalance as number);
+    }
+  }
+
+  return txns.reduce((sum, txn) => sum + getBalanceDelta(accountType, txn.type, txn.amount), 0);
+}
 
 // All routes require authentication
 router.use(requireAuth);
@@ -13,6 +50,21 @@ router.get("/", async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any).id;
     const accounts = await Account.find({ userId });
+
+    // Recalculate each account strictly from its own transactions.
+    for (const account of accounts) {
+      const recalculatedBalance = await getRecalculatedAccountBalance(
+        userId,
+        account._id.toString(),
+        account.type
+      );
+
+      if (account.balance !== recalculatedBalance) {
+        account.balance = recalculatedBalance;
+        await account.save();
+      }
+    }
+
     return res.json(accounts);
   } catch (err) {
     console.error(err);
@@ -25,11 +77,11 @@ router.get("/:id", async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any).id;
     const account = await Account.findOne({ _id: req.params.id, userId });
-    
+
     if (!account) {
       return res.status(404).json({ message: "Account not found" });
     }
-    
+
     return res.json(account);
   } catch (err) {
     console.error(err);
@@ -111,22 +163,12 @@ router.post("/recalculate-credit-card-balances", async (req: Request, res: Respo
     const results = [];
 
     for (const account of creditCardAccounts) {
-      // Get all transactions for this account
       const transactions = await Transaction.find({ userId, accountId: account._id });
-
-      // Calculate balance as amount owed
-      // Start from 0, debits (expenses) increase amount owed, credits (income/payments) decrease it
-      let balance = 0;
-      for (const tx of transactions) {
-        if (tx.type === "expense") {
-          balance += tx.amount;  // Purchases increase what you owe
-        } else if (tx.type === "income") {
-          balance -= tx.amount;  // Payments decrease what you owe
-        }
-      }
-
-      // Ensure balance never goes negative
-      balance = Math.max(0, balance);
+      const balance = await getRecalculatedAccountBalance(
+        userId,
+        account._id.toString(),
+        account.type
+      );
 
       account.balance = balance;
       await account.save();
@@ -153,3 +195,7 @@ router.post("/recalculate-credit-card-balances", async (req: Request, res: Respo
 });
 
 export default router;
+
+
+
+

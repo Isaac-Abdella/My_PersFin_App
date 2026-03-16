@@ -13,6 +13,7 @@ export default function Import() {
   const [detectedDuplicates, setDetectedDuplicates] = useState<any[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [selectedDuplicatesToKeep, setSelectedDuplicatesToKeep] = useState<Set<string>>(new Set());
+  const [duplicateModalFile, setDuplicateModalFile] = useState<File | null>(null);
   const [duplicateHandlingMode, setDuplicateHandlingMode] = useState<"skip" | "keep" | "review">("skip");
   const [newAccount, setNewAccount] = useState({
     name: "",
@@ -50,9 +51,17 @@ export default function Import() {
       setSelectedAccount(created._id);
       setShowAccountForm(false);
       setNewAccount({ name: "", type: "chequing", balance: 0, currency: "CAD" });
-    } catch (err) {
+    } catch {
       alert("Failed to create account");
     }
+  };
+
+  const closeDuplicateModal = () => {
+    setShowDuplicateModal(false);
+    setDuplicateHandlingMode("skip");
+    setDetectedDuplicates([]);
+    setSelectedDuplicatesToKeep(new Set());
+    setDuplicateModalFile(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,17 +71,50 @@ export default function Import() {
       setDetectedDuplicates([]);
       setShowDuplicateModal(false);
       setSelectedDuplicatesToKeep(new Set());
+      setDuplicateModalFile(null);
     }
   };
 
-  const performDryRun = async (uploadFile: File): Promise<{ duplicates: any[]; hasDuplicates: boolean }> => {
+  const performDryRun = async (uploadFile: File): Promise<{ duplicates: any[]; hasDuplicates: boolean; totalRecords: number; allAlreadyImported: boolean; errors: number; errorDetails: { row: number; error: string }[] }> => {
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+    formData.append("accountId", selectedAccount);
+    formData.append("dryRun", "true");
+
+    const res = await fetch("/api/import/upload", {
+      method: "POST",
+      body: formData,
+      credentials: "include"
+    });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    const data = await res.json();
+    const duplicateDetails = data.duplicateDetails || [];
+    const dryRunErrors = data.errorDetails || [];
+    const totalRecords = data.totalRecords || 0;
+    return {
+      duplicates: duplicateDetails,
+      hasDuplicates: duplicateDetails.length > 0,
+      totalRecords,
+      allAlreadyImported: totalRecords > 0 && duplicateDetails.length === totalRecords,
+      errors: data.errors || 0,
+      errorDetails: dryRunErrors
+    };
+  };
+
+  const performActualImport = async (uploadFile: File, duplicateKeysToImport: string[]) => {
     try {
+      setImporting(true);
       const formData = new FormData();
       formData.append("file", uploadFile);
       formData.append("accountId", selectedAccount);
-      formData.append("dryRun", "true");
+      formData.append("dryRun", "false");
+      formData.append("skipDuplicateIds", JSON.stringify(duplicateKeysToImport));
 
-      const res = await fetch("http://localhost:3000/import/upload", {
+      const res = await fetch("/api/import/upload", {
         method: "POST",
         body: formData,
         credentials: "include"
@@ -83,13 +125,16 @@ export default function Import() {
       }
 
       const data = await res.json();
-      return {
-        duplicates: data.duplicateDetails || [],
-        hasDuplicates: (data.duplicateDetails || []).length > 0
-      };
+      setResult(data);
+      window.dispatchEvent(new Event("transactions-imported"));
+      setFile(null);
+      const fileInput = document.getElementById("file-input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+      closeDuplicateModal();
     } catch (err: any) {
-      console.error("Dry run error:", err);
-      throw err;
+      alert("Import error: " + (err.message || "Unknown error"));
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -104,103 +149,97 @@ export default function Import() {
     setResult(null);
 
     try {
-      // First, do a dry run to detect duplicates
-      const { duplicates, hasDuplicates } = await performDryRun(file);
+      const { allAlreadyImported, errors, errorDetails } = await performDryRun(file);
 
-      if (hasDuplicates) {
-        // Show modal with duplicate options
-        setDetectedDuplicates(duplicates);
-        setShowDuplicateModal(true);
-        setDuplicateHandlingMode("skip");
-        setSelectedDuplicatesToKeep(new Set());
+      if (allAlreadyImported) {
+        alert("All transactions in this file are already imported.");
         setImporting(false);
         return;
       }
 
-      // No duplicates, proceed with import
-      await performActualImport(file, []);
-    } catch (err: any) {
-      alert("Error detecting duplicates: " + (err.message || "Unknown error"));
-      setImporting(false);
-    }
-  };
+      if (errors > 0) {
+        const preview = errorDetails
+          .slice(0, 5)
+          .map((detail) => `Row ${detail.row}: ${detail.error}`)
+          .join("\n");
 
-  const performActualImport = async (uploadFile: File, skipDuplicateIds: string[]) => {
-    try {
-      setImporting(true);
-      const formData = new FormData();
-      formData.append("file", uploadFile);
-      formData.append("accountId", selectedAccount);
-      formData.append("dryRun", "false");
-      formData.append("skipDuplicateIds", JSON.stringify(skipDuplicateIds));
+        const continueImport = window.confirm(
+          `Detected ${errors} CSV row error(s).\n\n${preview}${errorDetails.length > 5 ? "\n..." : ""}\n\nDo you want to continue importing valid rows?\nChoose Cancel to stop import.`
+        );
 
-      const res = await fetch("http://localhost:3000/import/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include"
-      });
-
-      if (!res.ok) {
-        throw new Error(await res.text());
+        if (!continueImport) {
+          setResult({
+            imported: 0,
+            duplicatesSkipped: 0,
+            duplicatesImported: 0,
+            errors,
+            errorDetails,
+            message: "Import cancelled due to CSV row errors."
+          });
+          setImporting(false);
+          return;
+        }
       }
 
-      const data = await res.json();
-      setResult(data);
-      setFile(null);
-      const fileInput = document.getElementById("file-input") as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
-      setShowDuplicateModal(false);
-      setDetectedDuplicates([]);
+      await performActualImport(file, []);
     } catch (err: any) {
-      alert("Import error: " + (err.message || "Unknown error"));
-    } finally {
+      alert("Error validating/importing CSV: " + (err.message || "Unknown error"));
       setImporting(false);
     }
   };
 
-  const handleDuplicateDecision = (mode: "skip" | "keep" | "review") => {
+  const handleDuplicateDecision = async (mode: "skip" | "keep" | "review") => {
+    const targetFile = duplicateModalFile || file;
+    if (!targetFile) {
+      alert("Please select the CSV file again.");
+      closeDuplicateModal();
+      return;
+    }
+
     if (mode === "skip") {
-      // Skip all duplicates
-      performActualImport(file!, detectedDuplicates.map(d => d.key));
+      await performActualImport(targetFile, []);
     } else if (mode === "keep") {
-      // Keep all duplicates
-      performActualImport(file!, []);
+      await performActualImport(targetFile, detectedDuplicates.map((d) => d.key));
     } else {
-      // Review mode - let user choose
       setDuplicateHandlingMode("review");
     }
   };
 
   const handleToggleDuplicate = (key: string) => {
-    const newSelected = new Set(selectedDuplicatesToKeep);
-    if (newSelected.has(key)) {
-      newSelected.delete(key);
+    const next = new Set(selectedDuplicatesToKeep);
+    if (next.has(key)) {
+      next.delete(key);
     } else {
-      newSelected.add(key);
+      next.add(key);
     }
-    setSelectedDuplicatesToKeep(newSelected);
+    setSelectedDuplicatesToKeep(next);
   };
 
-  const handleConfirmReview = () => {
-    // Collect IDs to skip (those NOT selected to keep)
-    const skipIds = detectedDuplicates
-      .map(d => d.key)
-      .filter(key => !selectedDuplicatesToKeep.has(key));
-    performActualImport(file!, skipIds);
+  const handleConfirmReview = async () => {
+    const targetFile = duplicateModalFile || file;
+    if (!targetFile) {
+      alert("Please select the CSV file again.");
+      closeDuplicateModal();
+      return;
+    }
+
+    const duplicateKeysToImport = detectedDuplicates
+      .map((d) => d.key)
+      .filter((key) => selectedDuplicatesToKeep.has(key));
+
+    await performActualImport(targetFile, duplicateKeysToImport);
   };
 
   const downloadTemplate = async () => {
     try {
-      const res = await fetch("http://localhost:3000/import/template", {
-        credentials: "include"
-      });
+      const res = await fetch("/api/import/template", { credentials: "include" });
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "transaction_template.csv";
       a.click();
-    } catch (err: any) {
+    } catch {
       alert("Failed to download template");
     }
   };
@@ -213,13 +252,11 @@ export default function Import() {
         <h1>Import CSV</h1>
         <div className="card">
           <div className="empty-state">
-            <h3>📊 No Bank Accounts Yet</h3>
-            <p>To import transactions, you first need to create a bank account (like your checking or savings account).</p>
-            
+            <h3>No Bank Accounts Yet</h3>
+            <p>To import transactions, create an account first.</p>
+
             {!showAccountForm ? (
-              <button onClick={() => setShowAccountForm(true)} className="btn">
-                + Create Bank Account
-              </button>
+              <button onClick={() => setShowAccountForm(true)} className="btn">+ Create Bank Account</button>
             ) : (
               <form onSubmit={handleCreateAccount} className="form">
                 <h4>Create New Bank Account</h4>
@@ -228,8 +265,7 @@ export default function Import() {
                   <input
                     type="text"
                     value={newAccount.name}
-                    onChange={e => setNewAccount({...newAccount, name: e.target.value})}
-                    placeholder="e.g., My Checking Account"
+                    onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
                     required
                   />
                 </label>
@@ -238,31 +274,21 @@ export default function Import() {
                   Account Type:
                   <select
                     value={newAccount.type}
-                    onChange={e => setNewAccount({...newAccount, type: e.target.value as any})}
+                    onChange={(e) => setNewAccount({ ...newAccount, type: e.target.value as any })}
                   >
-                    <optgroup label="Savings & Chequing">
-                      <option value="chequing">Chequing</option>
-                      <option value="savings">Savings</option>
-                    </optgroup>
-                    <optgroup label="Credit & LOC">
-                      <option value="credit-card">Credit Card</option>
-                      <option value="line-of-credit">Line of Credit</option>
-                    </optgroup>
-                    <optgroup label="Registered Accounts">
-                      <option value="tfsa">TFSA (Tax-Free Savings Account)</option>
-                      <option value="rrsp">RRSP (Registered Retirement Savings)</option>
-                      <option value="gic">GIC (Guaranteed Investment Certificate)</option>
-                    </optgroup>
-                    <optgroup label="Loans & Debts">
-                      <option value="student-loan">Student Loan</option>
-                      <option value="mortgage">Mortgage</option>
-                      <option value="auto-loan">Auto Loan</option>
-                      <option value="personal-loan">Personal Loan</option>
-                    </optgroup>
-                    <optgroup label="Other">
-                      <option value="investment">Investment</option>
-                      <option value="other">Other</option>
-                    </optgroup>
+                    <option value="chequing">Chequing</option>
+                    <option value="savings">Savings</option>
+                    <option value="credit-card">Credit Card</option>
+                    <option value="line-of-credit">Line of Credit</option>
+                    <option value="tfsa">TFSA</option>
+                    <option value="rrsp">RRSP</option>
+                    <option value="gic">GIC</option>
+                    <option value="student-loan">Student Loan</option>
+                    <option value="mortgage">Mortgage</option>
+                    <option value="auto-loan">Auto Loan</option>
+                    <option value="personal-loan">Personal Loan</option>
+                    <option value="investment">Investment</option>
+                    <option value="other">Other</option>
                   </select>
                 </label>
 
@@ -272,16 +298,13 @@ export default function Import() {
                     type="number"
                     step="0.01"
                     value={newAccount.balance}
-                    onChange={e => setNewAccount({...newAccount, balance: parseFloat(e.target.value) || 0})}
-                    placeholder="0.00"
+                    onChange={(e) => setNewAccount({ ...newAccount, balance: parseFloat(e.target.value) || 0 })}
                   />
                 </label>
 
                 <div className="form-actions">
                   <button type="submit" className="btn">Create Account</button>
-                  <button type="button" onClick={() => setShowAccountForm(false)} className="btn-secondary">
-                    Cancel
-                  </button>
+                  <button type="button" onClick={() => setShowAccountForm(false)} className="btn-secondary">Cancel</button>
                 </div>
               </form>
             )}
@@ -297,21 +320,15 @@ export default function Import() {
 
       <div className="card">
         <h3>Upload CSV File</h3>
-        <p>Import your bank transactions from a CSV file. The CSV should have columns: DATE, DESCRIPTION, DEBIT, CREDIT, BALANCE.</p>
-        
-        <button onClick={downloadTemplate} className="btn-secondary">
-          📥 Download CSV Template
-        </button>
+        <p>Import transactions from a CSV file.</p>
+
+        <button onClick={downloadTemplate} className="btn-secondary">Download CSV Template</button>
 
         <form onSubmit={handleUpload} className="import-form">
           <label>
             Select Account:
-            <select 
-              value={selectedAccount} 
-              onChange={e => setSelectedAccount(e.target.value)}
-              required
-            >
-              {accounts.map(acc => (
+            <select value={selectedAccount} onChange={(e) => setSelectedAccount(e.target.value)} required>
+              {accounts.map((acc) => (
                 <option key={acc._id} value={acc._id}>
                   {acc.name} - ${acc.balance.toFixed(2)}
                 </option>
@@ -321,13 +338,7 @@ export default function Import() {
 
           <label>
             Choose CSV File:
-            <input
-              id="file-input"
-              type="file"
-              accept=".csv"
-              onChange={handleFileChange}
-              required
-            />
+            <input id="file-input" type="file" accept=".csv" onChange={handleFileChange} required />
           </label>
 
           {file && (
@@ -341,140 +352,64 @@ export default function Import() {
           </button>
         </form>
 
-        {/* Duplicate Detection Modal */}
         {showDuplicateModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              padding: '2rem',
-              borderRadius: '8px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              maxWidth: '600px',
-              width: '90%'
-            }}>
-              <h3>🔍 Duplicate Transactions Detected</h3>
-              <p>Found <strong>{detectedDuplicates.length}</strong> duplicate transaction(s) in your CSV file.</p>
-              <p>These transactions already exist in your account. What would you like to do?</p>
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000
+            }}
+            onClick={closeDuplicateModal}
+          >
+            <div
+              style={{
+                backgroundColor: "white",
+                padding: "2rem",
+                borderRadius: "8px",
+                maxHeight: "90vh",
+                overflowY: "auto",
+                maxWidth: "600px",
+                width: "90%"
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>Duplicate Transactions Detected</h3>
+              <p>Found <strong>{detectedDuplicates.length}</strong> duplicate transaction(s).</p>
 
               {duplicateHandlingMode !== "review" ? (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h4 style={{ marginBottom: '1rem' }}>Choose an option:</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <button
-                      onClick={() => handleDuplicateDecision("skip")}
-                      className="btn-primary"
-                      style={{ width: '100%', textAlign: 'left', padding: '0.75rem' }}
-                    >
-                      ⏭️ Skip All Duplicates (Recommended)
-                    </button>
-                    <p style={{ margin: '0 0 0.5rem 0', color: '#666', fontSize: '0.9rem' }}>
-                      Only import new transactions, skip these duplicates
-                    </p>
-
-                    <button
-                      onClick={() => handleDuplicateDecision("keep")}
-                      className="btn-secondary"
-                      style={{ width: '100%', textAlign: 'left', padding: '0.75rem' }}
-                    >
-                      ✅ Keep All Duplicates
-                    </button>
-                    <p style={{ margin: '0 0 0.5rem 0', color: '#666', fontSize: '0.9rem' }}>
-                      Import everything including these duplicates
-                    </p>
-
-                    <button
-                      onClick={() => handleDuplicateDecision("review")}
-                      className="btn-secondary"
-                      style={{ width: '100%', textAlign: 'left', padding: '0.75rem' }}
-                    >
-                      🔎 Review & Choose
-                    </button>
-                    <p style={{ margin: '0 0 1rem 0', color: '#666', fontSize: '0.9rem' }}>
-                      Decide for each duplicate
-                    </p>
-
-                    <button
-                      onClick={() => setShowDuplicateModal(false)}
-                      className="btn-secondary"
-                      style={{ width: '100%' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-
-                  {/* Preview of duplicates */}
-                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #ddd' }}>
-                    <h5>💡 Duplicates Preview:</h5>
-                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                      {detectedDuplicates.map((dup, idx) => (
-                        <div key={idx} style={{
-                          padding: '0.75rem',
-                          marginBottom: '0.5rem',
-                          backgroundColor: '#fff9e6',
-                          borderRadius: '4px',
-                          fontSize: '0.9rem'
-                        }}>
-                          <strong>{new Date(dup.date).toLocaleDateString()}</strong> - ${dup.amount.toFixed(2)} - {dup.description}
-                          {dup.category && <span style={{ color: '#666' }}> ({dup.category})</span>}
-                        </div>
-                      ))}
-                    </div>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <h4 style={{ marginBottom: "1rem" }}>Choose an option:</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <button type="button" onClick={() => handleDuplicateDecision("skip")} className="btn-primary" disabled={importing}>Skip All Duplicates (Recommended)</button>
+                    <button type="button" onClick={() => handleDuplicateDecision("keep")} className="btn-secondary" disabled={importing}>Keep All Duplicates</button>
+                    <button type="button" onClick={() => handleDuplicateDecision("review")} className="btn-secondary" disabled={importing}>Review & Choose</button>
+                    <button type="button" onClick={closeDuplicateModal} className="btn-secondary" disabled={importing}>Cancel</button>
                   </div>
                 </div>
               ) : (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h4 style={{ marginBottom: '1rem' }}>Select which duplicates to import:</h4>
-                  <p style={{ marginBottom: '1rem', color: '#666' }}>
-                    Check the boxes for duplicates you want to import (rows marked "NEW" will always be imported):
-                  </p>
-                  <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1rem' }}>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <h4 style={{ marginBottom: "1rem" }}>Select which duplicates to import:</h4>
+                  <div style={{ maxHeight: "400px", overflowY: "auto", marginBottom: "1rem" }}>
                     {detectedDuplicates.map((dup, idx) => (
-                      <label key={idx} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '0.75rem',
-                        marginBottom: '0.5rem',
-                        backgroundColor: selectedDuplicatesToKeep.has(dup.key) ? '#e6f9e6' : '#fff9e6',
-                        borderRadius: '4px',
-                        border: selectedDuplicatesToKeep.has(dup.key) ? '1px solid #4CAF50' : '1px solid #fff',
-                        cursor: 'pointer'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedDuplicatesToKeep.has(dup.key)}
-                          onChange={() => handleToggleDuplicate(dup.key)}
-                          style={{ marginRight: '0.75rem', cursor: 'pointer' }}
-                        />
+                      <label key={idx} style={{ display: "flex", alignItems: "center", padding: "0.75rem", marginBottom: "0.5rem", backgroundColor: selectedDuplicatesToKeep.has(dup.key) ? "#e6f9e6" : "#fff9e6", borderRadius: "4px", cursor: "pointer" }}>
+                        <input type="checkbox" checked={selectedDuplicatesToKeep.has(dup.key)} onChange={() => handleToggleDuplicate(dup.key)} style={{ marginRight: "0.75rem" }} />
                         <div>
                           <strong>{new Date(dup.date).toLocaleDateString()}</strong> - ${dup.amount.toFixed(2)} - {dup.description}
-                          {dup.category && <span style={{ color: '#666' }}> ({dup.category})</span>}
                         </div>
                       </label>
                     ))}
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={handleConfirmReview} className="btn-primary">
-                      ✓ Confirm Selection
-                    </button>
-                    <button
-                      onClick={() => setDuplicateHandlingMode("skip")}
-                      className="btn-secondary"
-                    >
-                      Back
-                    </button>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button type="button" onClick={handleConfirmReview} className="btn-primary" disabled={importing}>Confirm Selection</button>
+                    <button type="button" onClick={() => setDuplicateHandlingMode("skip")} className="btn-secondary" disabled={importing}>Back</button>
                   </div>
                 </div>
               )}
@@ -483,51 +418,38 @@ export default function Import() {
         )}
 
         {result && (
-          <div className={`result ${result.errors > 0 ? 'warning' : 'success'}`}>
+          <div className={`result ${result.errors > 0 ? "warning" : "success"}`}>
             <h4>Import Results</h4>
-            <p>✅ Successfully imported: <strong>{result.imported}</strong> transactions</p>
-            {result.duplicatesSkipped > 0 && (
-              <p>⏭️ Duplicates skipped: <strong>{result.duplicatesSkipped}</strong></p>
-            )}
-            {result.duplicatesImported > 0 && (
-              <p>📝 Duplicates imported: <strong>{result.duplicatesImported}</strong></p>
-            )}
-            {result.errors > 0 && (
-              <>
-                <p>❌ Errors: <strong>{result.errors}</strong></p>
-                {result.errorDetails && result.errorDetails.length > 0 && (
-                  <details>
-                    <summary>View Errors</summary>
-                    <ul>
-                      {result.errorDetails.map((err: any, i: number) => (
-                        <li key={i}>Row {err.row}: {err.error}</li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </>
+            {result.message && <p>{result.message}</p>}
+            <p>Successfully imported: <strong>{result.imported}</strong> transactions</p>
+            {result.duplicatesSkipped > 0 && <p>Duplicates skipped: <strong>{result.duplicatesSkipped}</strong></p>}
+            {result.duplicatesImported > 0 && <p>Duplicates imported: <strong>{result.duplicatesImported}</strong></p>}
+            {result.errors > 0 && <p>Errors: <strong>{result.errors}</strong></p>}
+
+            {Array.isArray(result.errorDetails) && result.errorDetails.length > 0 && (
+              <div style={{ marginTop: "0.75rem" }}>
+                <h5 style={{ marginBottom: "0.5rem" }}>Error Details</h5>
+                <ul style={{ margin: 0, paddingLeft: "1.25rem", maxHeight: "220px", overflowY: "auto" }}>
+                  {result.errorDetails.map((detail: { row?: number; error?: string }, idx: number) => (
+                    <li key={`${detail.row ?? "unknown"}-${idx}`}>
+                      Row {detail.row ?? "?"}: {detail.error || "Unknown error"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}
       </div>
-
-      <div className="card">
-        <h3>CSV Format Requirements</h3>
-        <p>Your CSV file should have the following columns:</p>
-        <ul>
-          <li><strong>DATE</strong> - Transaction date (MM/DD/YYYY format)</li>
-          <li><strong>DESCRIPTION</strong> - Transaction description or merchant name</li>
-          <li><strong>DEBIT</strong> - Amount debited (expenses/withdrawals) - leave blank if not applicable</li>
-          <li><strong>CREDIT</strong> - Amount credited (income/deposits) - leave blank if not applicable</li>
-          <li><strong>BALANCE</strong> - Account balance after transaction (optional, not used in import)</li>
-        </ul>
-        <p>Optional columns:</p>
-        <ul>
-          <li><strong>CATEGORY</strong> - Transaction category (will auto-categorize if not provided)</li>
-        </ul>
-        <p className="note">💡 Transactions will be automatically categorized based on merchant names!</p>
-        <p className="note">📝 You can export transactions directly from your bank in this format, or download our template.</p>
-      </div>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

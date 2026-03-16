@@ -1,3 +1,13 @@
+﻿export interface CategoryNode {
+  key: string;
+  name: string;
+}
+
+export interface CategoryMajor {
+  key: string;
+  name: string;
+  subcategories: CategoryNode[];
+}
 export interface User {
   id: string;
   email: string;
@@ -31,8 +41,13 @@ export interface Budget {
   _id: string;
   userId: string;
   category: string;
+  categoryKey?: string;
+  majorCategoryKey?: string;
+  majorCategoryName?: string;
   amount: number;
-  period: "weekly" | "monthly" | "yearly";
+  period: "biweekly" | "monthly" | "yearly";
+  rolloverMode?: "none" | "carry-unused" | "carry-net";
+  isActive?: boolean;
   startDate: string;
   endDate?: string;
   createdAt: string;
@@ -47,7 +62,9 @@ export interface Debt {
   currentBalance: number;
   interestRate: number;
   minimumPayment: number;
+  dueScheduleType?: "specific" | "monthly" | "biweekly";
   dueDate?: string;
+  nextDueDate?: string;
   accountNumber?: string;
   lender?: string;
   createdAt: string;
@@ -87,6 +104,9 @@ export interface FinancialOverview {
 }
 
 export interface PayoffStrategy {
+  cadence?: "monthly" | "biweekly";
+  paymentPerCadence?: number;
+  extraPerCadence?: number;
   method: "avalanche" | "snowball";
   totalMonths: number;
   totalYears: string;
@@ -98,3 +118,11 @@ export interface PayoffStrategy {
   }>;
   monthlyPayment: number;
 }
+
+
+
+
+
+
+
+

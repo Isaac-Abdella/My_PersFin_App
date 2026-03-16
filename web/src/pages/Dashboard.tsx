@@ -26,20 +26,12 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      // Recalculate credit card balances first
-      try {
-        await api("/accounts/recalculate-credit-card-balances", {
-          method: "POST"
-        });
-      } catch (err) {
-        console.log("Note: Credit card balance recalculation not needed or already up to date");
-      }
-
-      const [overviewData, spendingData, budgetData, accountsData] = await Promise.all([
+      // Recalculate and load per-account balances first
+      const accountsData = await api("/accounts");
+      const [overviewData, spendingData, budgetData] = await Promise.all([
         api("/analytics/overview"),
         api("/analytics/spending-by-category"),
-        api("/analytics/budget-comparison"),
-        api("/accounts")
+        api("/analytics/budget-comparison")
       ]);
       setOverview(overviewData);
       setSpending(spendingData.categories.slice(0, 6)); // Top 6 categories
@@ -117,9 +109,16 @@ export default function Dashboard() {
   };
 
   const getBalanceLabel = (account: Account): string => {
-    if (account.type === "credit-card") {
-      return `Amount Owing: $${account.balance.toFixed(2)}`;
+    const liabilityTypes = new Set(["credit-card", "line-of-credit", "student-loan", "mortgage", "auto-loan", "personal-loan"]);
+
+    if (liabilityTypes.has(account.type)) {
+      return `Amount Owing: $${Math.abs(account.balance).toFixed(2)}`;
     }
+
+    if (account.type === "chequing" || account.type === "checking" || account.type === "savings") {
+      return `Available: $${account.balance.toFixed(2)}`;
+    }
+
     return `$${account.balance.toFixed(2)}`;
   };
 
@@ -394,3 +393,9 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
+
+
+
+

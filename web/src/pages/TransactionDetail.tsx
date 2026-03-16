@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import type { Transaction, Account } from "../types";
+import type { Transaction, Account, CategoryMajor } from "../types";
+import { CATEGORY_CATALOG } from "../data/categoryCatalog";
 import { format } from "date-fns";
 
 export default function TransactionDetail() {
@@ -9,6 +10,7 @@ export default function TransactionDetail() {
   const navigate = useNavigate();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<CategoryMajor[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     accountId: "",
@@ -31,13 +33,24 @@ export default function TransactionDetail() {
       ]);
       setTransaction(txn);
       setAccounts(accts);
+      try {
+        const categoriesData = await api("/categories/tree");
+        const resolvedCategories = Array.isArray(categoriesData?.majorCategories)
+          ? categoriesData.majorCategories
+          : Array.isArray(categoriesData)
+            ? categoriesData
+            : [];
+        setCategories(resolvedCategories.length > 0 ? resolvedCategories : CATEGORY_CATALOG);
+      } catch {
+        setCategories(CATEGORY_CATALOG);
+      }
       setFormData({
         accountId: txn.accountId,
         type: txn.type,
         amount: txn.amount.toString(),
         category: txn.category || "",
         description: txn.description || "",
-        date: txn.date.split('T')[0]
+        date: txn.date.split("T")[0]
       });
     } catch (err) {
       console.error("Failed to load transaction", err);
@@ -70,7 +83,7 @@ export default function TransactionDetail() {
   if (loading) return <div className="loading">Loading...</div>;
   if (!transaction) return <div className="loading">Transaction not found</div>;
 
-  const account = accounts.find(a => a._id === transaction.accountId);
+  const account = accounts.find((a) => a._id === transaction.accountId);
 
   return (
     <div className="page">
@@ -82,7 +95,7 @@ export default function TransactionDetail() {
         <div className="transaction-info">
           <p><strong>Account:</strong> {account?.name}</p>
           <p><strong>Original Amount:</strong> ${transaction.amount.toFixed(2)}</p>
-          <p><strong>Created:</strong> {format(new Date(transaction.date), 'PPP')}</p>
+          <p><strong>Created:</strong> {format(new Date(transaction.date), "PPP")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="form">
@@ -90,25 +103,25 @@ export default function TransactionDetail() {
             Account:
             <select
               value={formData.accountId}
-              onChange={e => setFormData({...formData, accountId: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
               required
             >
               <option value="">Select Account</option>
-              {accounts.map(acc => {
-                const typeLabels: {[key: string]: string} = {
-                  "chequing": "Chequing",
-                  "savings": "Savings",
+              {accounts.map((acc) => {
+                const typeLabels: { [key: string]: string } = {
+                  chequing: "Chequing",
+                  savings: "Savings",
                   "credit-card": "Credit Card",
-                  "tfsa": "TFSA",
-                  "rrsp": "RRSP",
-                  "gic": "GIC",
+                  tfsa: "TFSA",
+                  rrsp: "RRSP",
+                  gic: "GIC",
                   "line-of-credit": "LOC",
                   "student-loan": "Student Loan",
-                  "mortgage": "Mortgage",
+                  mortgage: "Mortgage",
                   "auto-loan": "Auto Loan",
                   "personal-loan": "Personal Loan",
-                  "investment": "Investment",
-                  "other": "Other"
+                  investment: "Investment",
+                  other: "Other"
                 };
                 const typeLabel = typeLabels[acc.type] || acc.type;
                 return (
@@ -122,7 +135,7 @@ export default function TransactionDetail() {
             Type:
             <select
               value={formData.type}
-              onChange={e => setFormData({...formData, type: e.target.value as any})}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
             >
               <option value="expense">Expense</option>
               <option value="income">Income</option>
@@ -137,19 +150,23 @@ export default function TransactionDetail() {
               step="0.01"
               placeholder="Amount"
               value={formData.amount}
-              onChange={e => setFormData({...formData, amount: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               required
             />
           </label>
 
           <label>
             Category:
-            <input
-              type="text"
-              placeholder="Category"
-              value={formData.category}
-              onChange={e => setFormData({...formData, category: e.target.value})}
-            />
+            <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
+              <option value="">Select Subcategory</option>
+              {categories.map((major) => (
+                <optgroup key={major.key} label={major.name}>
+                  {major.subcategories.map((sub) => (
+                    <option key={sub.key} value={sub.name}>{sub.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -158,7 +175,7 @@ export default function TransactionDetail() {
               type="text"
               placeholder="Description"
               value={formData.description}
-              onChange={e => setFormData({...formData, description: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
           </label>
 
@@ -167,7 +184,7 @@ export default function TransactionDetail() {
             <input
               type="date"
               value={formData.date}
-              onChange={e => setFormData({...formData, date: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             />
           </label>
 
@@ -180,3 +197,5 @@ export default function TransactionDetail() {
     </div>
   );
 }
+
+

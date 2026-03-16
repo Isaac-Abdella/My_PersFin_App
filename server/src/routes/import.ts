@@ -8,6 +8,26 @@ import { parse } from "csv-parse/sync";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+const LIABILITY_TYPES = new Set([
+  "credit-card",
+  "line-of-credit",
+  "student-loan",
+  "mortgage",
+  "auto-loan",
+  "personal-loan"
+]);
+
+async function getLatestImportedStatementBalance(userId: string, accountId: string): Promise<number | null> {
+  const latestStatementTxn = await Transaction.findOne({
+    userId,
+    accountId,
+    statementBalance: { $ne: null }
+  }).sort({ date: -1, createdAt: -1, _id: -1 });
+
+  if (!latestStatementTxn) return null;
+  const value = (latestStatementTxn as any).statementBalance;
+  return typeof value === "number" && isFinite(value) ? value : null;
+}
 
 // All routes require authentication
 router.use(requireAuth);
@@ -17,12 +37,24 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
   try {
     const userId = (req.user as any).id;
     const { accountId, dryRun = false, skipDuplicateIds = [] } = req.body;
+    const normalizedDryRun = dryRun === true || dryRun === "true";
 
+    let normalizedSkipDuplicateIds: string[] = [];
+    if (Array.isArray(skipDuplicateIds)) {
+      normalizedSkipDuplicateIds = skipDuplicateIds.map(String);
+    } else if (typeof skipDuplicateIds === "string" && skipDuplicateIds.trim()) {
+      try {
+        const parsed = JSON.parse(skipDuplicateIds);
+        normalizedSkipDuplicateIds = Array.isArray(parsed) ? parsed.map(String) : [];
+      } catch {
+        normalizedSkipDuplicateIds = [];
+      }
+    }
     // Debug logging
     console.log("Upload request received:");
     console.log("File:", req.file ? `${req.file.originalname} (${req.file.size} bytes)` : "No file");
-    console.log("DryRun:", dryRun);
-    console.log("SkipDuplicateIds:", skipDuplicateIds);
+    console.log("DryRun:", normalizedDryRun);
+    console.log("SkipDuplicateIds:", normalizedSkipDuplicateIds);
 
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
@@ -57,7 +89,7 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
     }
 
     // Detect CSV format and map columns
-    const mapping = detectCSVFormat(records[0]);
+    const mapping = detectCSVFormat(records);
     if (!mapping) {
       const detectedCols = Object.keys(records[0]);
       const headers = detectedCols.map(h => h.toLowerCase()).join(", ");
@@ -75,6 +107,17 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
     const errors = [];
     const duplicates = [];
     let accountBalanceChange = 0;
+    // Build a fast lookup of existing transaction signatures for this account
+    const existingTransactions = await Transaction.find(
+      { userId, accountId },
+      { date: 1, amount: 1, description: 1 }
+    ).lean();
+    const existingKeys = new Set<string>();
+    for (const tx of existingTransactions) {
+      const txDate = new Date(tx.date);
+      const key = `${txDate.toDateString()}-${tx.amount}-${tx.description}`;
+      existingKeys.add(key);
+    }
 
     // First pass: parse all records and detect duplicates
     const parsedRecords = [];
@@ -88,9 +131,10 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
           transaction.category = categorizeTransaction(transaction.description || "");
         }
 
-        // Check for duplicates
-        const isDuplicate = await findDuplicateTransaction(userId, accountId, transaction);
         const duplicateKey = `${transaction.date.toDateString()}-${transaction.amount}-${transaction.description}`;
+        // Only compare against already-imported transactions in the database.
+        // Do not treat duplicates within the same uploaded file as duplicates.
+        const isDuplicate = existingKeys.has(duplicateKey);
         
         if (isDuplicate) {
           duplicates.push({
@@ -116,12 +160,14 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
     }
 
     // If dry run, just return detected duplicates without importing
-    if (dryRun) {
+    if (normalizedDryRun) {
       return res.json({
         message: "Dry run completed - duplicates detected",
         isDryRun: true,
         duplicates: duplicates.length,
         duplicateDetails: duplicates,
+        errors: errors.length,
+        errorDetails: errors,
         totalRecords: parsedRecords.length,
         recordsToImport: parsedRecords.length - duplicates.length
       });
@@ -129,7 +175,7 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
 
     // Second pass: import records (skipping duplicates unless marked to keep)
     for (const record of parsedRecords) {
-      if (record.isDuplicate && !skipDuplicateIds.includes(record.key)) {
+      if (record.isDuplicate && !normalizedSkipDuplicateIds.includes(record.key)) {
         // Skip this duplicate
         continue;
       }
@@ -157,24 +203,31 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
     console.log(`[IMPORT] Account type: ${account.type}`);
     console.log(`[IMPORT] Balance change from transactions: ${accountBalanceChange}`);
     console.log(`[IMPORT] Previous balance: ${account.balance}`);
-    
-    if (account.type === "credit-card") {
+
+    const latestStatementBalance = LIABILITY_TYPES.has(account.type)
+      ? await getLatestImportedStatementBalance(userId, accountId)
+      : null;
+
+    if (latestStatementBalance !== null && LIABILITY_TYPES.has(account.type)) {
+      account.balance = Math.max(0, latestStatementBalance);
+    } else if (LIABILITY_TYPES.has(account.type)) {
       account.balance -= accountBalanceChange;
     } else {
       account.balance += accountBalanceChange;
     }
-    
+
     console.log(`[IMPORT] New balance: ${account.balance}`);
     await account.save();
 
     return res.json({
       message: "Import completed",
       imported: importedTransactions.length,
-      duplicatesSkipped: duplicates.length - parsedRecords.filter(r => r.isDuplicate && skipDuplicateIds.includes(r.key)).length,
-      duplicatesImported: parsedRecords.filter(r => r.isDuplicate && skipDuplicateIds.includes(r.key)).length,
+      duplicatesSkipped: duplicates.length - parsedRecords.filter(r => r.isDuplicate && normalizedSkipDuplicateIds.includes(r.key)).length,
+      duplicatesImported: parsedRecords.filter(r => r.isDuplicate && normalizedSkipDuplicateIds.includes(r.key)).length,
       errors: errors.length,
       errorDetails: errors,
       newBalance: account.balance,
+      usedStatementBalance: latestStatementBalance !== null,
       transactions: importedTransactions
     });
   } catch (err) {
@@ -251,50 +304,46 @@ router.get("/duplicates/:accountId", async (req: Request, res: Response) => {
   }
 });
 
-// Check if a transaction is a duplicate (same date, amount, description)
-async function findDuplicateTransaction(userId: string, accountId: string, transaction: any): Promise<boolean> {
-  const startOfDay = new Date(transaction.date);
-  startOfDay.setHours(0, 0, 0, 0);
-  
-  const endOfDay = new Date(transaction.date);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  const existing = await Transaction.findOne({
-    userId,
-    accountId,
-    amount: transaction.amount,
-    description: transaction.description,
-    date: { $gte: startOfDay, $lte: endOfDay }
-  });
-
-  return !!existing;
-}
-
 // Detect CSV format and map columns
-function detectCSVFormat(firstRow: any): any {
+function detectCSVFormat(records: any[]): any {
+  const firstRow = records[0];
   const headers = Object.keys(firstRow).map(h => h.toLowerCase());
 
   // Common date column names
-  const dateCol = headers.find(h => 
+  const dateCol = headers.find(h =>
     h.includes("date") || h === "posted" || h === "transaction date" || h === "trans. date"
   );
 
   // Common description column names - including the TD Bank typo "desciption"
-  const descCol = headers.find(h => 
-    h.includes("description") || h.includes("desciption") || h.includes("memo") || 
+  const descCol = headers.find(h =>
+    h.includes("description") || h.includes("desciption") || h.includes("memo") ||
     h.includes("merchant") || h === "name" || h.includes("payee")
   );
 
   // Amount columns - could be single amount or separate debit/credit
-  const amountCol = headers.find(h => h === "amount" || h.includes("amount"));
+  const amountCandidates = headers.filter(h =>
+    h === "amount" ||
+    h.includes("amount") ||
+    h.includes("amt") ||
+    h.includes("charge") ||
+    h.includes("transaction value")
+  );
   const debitCol = headers.find(h => h.includes("debit") || h === "withdrawal");
   const creditCol = headers.find(h => h.includes("credit") || h === "deposit");
+  const balanceCol = headers.find(h => h === "balance" || h.includes("balance"));
+  const typeCol = headers.find(h =>
+    h === "type" ||
+    h.includes("transaction type") ||
+    h.includes("trans type") ||
+    h.includes("details") ||
+    h.includes("record type")
+  );
 
   if (!dateCol || !descCol) {
     return null;
   }
 
-  if (!amountCol && (!debitCol || !creditCol)) {
+  if (amountCandidates.length === 0 && (!debitCol || !creditCol)) {
     return null;
   }
 
@@ -303,13 +352,40 @@ function detectCSVFormat(firstRow: any): any {
     return Object.keys(firstRow).find(k => k.toLowerCase() === lowerName) || lowerName;
   };
 
+  const scoreAmountHeader = (lowerHeader: string) => {
+    let score = 0;
+    if (lowerHeader === "amount") score += 40;
+    if (lowerHeader.includes("cad") || lowerHeader.includes("local")) score += 35;
+    if (lowerHeader.includes("account")) score += 15;
+    if (lowerHeader.includes("usd") || lowerHeader.includes("foreign") || lowerHeader.includes("original")) score -= 25;
+    if (lowerHeader.includes("pending")) score -= 20;
+
+    const originalHeader = getOriginalName(lowerHeader);
+    const sampleRows = records.slice(0, 20);
+    const nonEmptyCount = sampleRows.reduce((count, row) => {
+      const rawValue = row[originalHeader];
+      if (rawValue === undefined || rawValue === null || String(rawValue).trim() === "") return count;
+      return count + 1;
+    }, 0);
+
+    score += nonEmptyCount * 2;
+    return score;
+  };
+
+  const sortedAmountCandidates = [...amountCandidates].sort((a, b) => scoreAmountHeader(b) - scoreAmountHeader(a));
+  const amountCols = sortedAmountCandidates.map(getOriginalName);
+  const amountCol = amountCols[0] || null;
+
   return {
     dateCol: getOriginalName(dateCol),
     descCol: getOriginalName(descCol),
-    amountCol: amountCol ? getOriginalName(amountCol) : null,
+    amountCol,
+    amountCols,
     debitCol: debitCol ? getOriginalName(debitCol) : null,
     creditCol: creditCol ? getOriginalName(creditCol) : null,
-    categoryCol: headers.find(h => h.includes("category")) ? 
+    balanceCol: balanceCol ? getOriginalName(balanceCol) : null,
+    typeCol: typeCol ? getOriginalName(typeCol) : null,
+    categoryCol: headers.find(h => h.includes("category")) ?
       getOriginalName(headers.find(h => h.includes("category"))!) : null
   };
 }
@@ -324,16 +400,35 @@ function parseCSVRow(row: any, mapping: any, userId: string, accountId: string) 
 
   if (mapping.amountCol) {
     // Single amount column
-    amount = parseFloat(row[mapping.amountCol].replace(/[$,]/g, ""));
-    type = amount < 0 ? "expense" : "income";
+    const candidateAmountCols: string[] = Array.isArray(mapping.amountCols) && mapping.amountCols.length > 0
+      ? mapping.amountCols
+      : [mapping.amountCol];
+
+    let parsedAmount: number | undefined = undefined;
+    for (const col of candidateAmountCols) {
+      const value = parseAmountValue(row[col]);
+      if (!isFinite(value)) continue;
+      if (value !== 0) {
+        parsedAmount = value;
+        break;
+      }
+      if (parsedAmount === undefined) {
+        parsedAmount = value;
+      }
+    }
+
+    amount = parsedAmount ?? NaN;
+    const directionRaw = mapping.typeCol ? String(row[mapping.typeCol] ?? "") : "";
+    const directionType = parseDirectionType(directionRaw);
+    type = directionType ?? (amount < 0 ? "expense" : "income");
     amount = Math.abs(amount);
   } else {
     // Separate debit/credit columns
     const debitStr = row[mapping.debitCol] || "0";
     const creditStr = row[mapping.creditCol] || "0";
-    
-    const debit = parseFloat(debitStr.replace(/[$,]/g, "")) || 0;
-    const credit = parseFloat(creditStr.replace(/[$,]/g, "")) || 0;
+
+    const debit = parseAmountValue(debitStr) || 0;
+    const credit = parseAmountValue(creditStr) || 0;
 
     if (credit > 0) {
       amount = credit;
@@ -344,17 +439,22 @@ function parseCSVRow(row: any, mapping: any, userId: string, accountId: string) 
     }
   }
 
+  if (!isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid amount value");
+  }
+
   // Parse date (try multiple formats)
   let date = new Date(dateStr);
   if (isNaN(date.getTime())) {
     // Try MM/DD/YYYY
-    const parts = dateStr.split(/[\/\-]/);
+    const parts = String(dateStr).split(/[\/\-]/);
     if (parts.length === 3) {
       date = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
     }
   }
 
   const category = mapping.categoryCol ? row[mapping.categoryCol] : null;
+  const statementBalance = mapping.balanceCol ? parseAmountValue(row[mapping.balanceCol]) : null;
 
   return {
     userId,
@@ -363,10 +463,68 @@ function parseCSVRow(row: any, mapping: any, userId: string, accountId: string) 
     amount,
     description,
     category,
+    statementBalance: isFinite(statementBalance as number) ? statementBalance : null,
     date: isNaN(date.getTime()) ? new Date() : date
   };
 }
 
+function parseAmountValue(rawValue: unknown): number {
+  if (rawValue === null || rawValue === undefined) return 0;
+  const original = String(rawValue).trim();
+  if (!original) return 0;
+
+  const hasParensNegative = /^\(.*\)$/.test(original);
+  const hasTrailingNegative = /^.*[-\u2212]$/.test(original);
+  const hasLeadingNegative = /^[-\u2212].*/.test(original);
+  const hasDr = /\bDR\b/i.test(original);
+  const hasCr = /\bCR\b/i.test(original);
+
+  const normalized = original
+    .replace(/\u2212/g, "-")
+    .replace(/[$,\s]/g, "")
+    .replace(/[()]/g, "")
+    .replace(/^CR[:\s-]*/i, "")
+    .replace(/^DR[:\s-]*/i, "")
+    .replace(/CR$/i, "")
+    .replace(/DR$/i, "")
+    .replace(/^[+-]/, "")
+    .replace(/[+-]$/, "");
+
+  const parsed = parseFloat(normalized);
+  if (!isFinite(parsed)) return NaN;
+
+  let sign = 1;
+  if (hasParensNegative || hasTrailingNegative || hasLeadingNegative || hasDr) sign = -1;
+  if (hasCr) sign = 1;
+
+  return parsed * sign;
+}
+
+function parseDirectionType(rawDirection: string): "income" | "expense" | null {
+  const direction = rawDirection.toLowerCase().trim();
+  if (!direction) return null;
+
+  if (
+    direction.includes("debit") ||
+    direction.includes("purchase") ||
+    direction.includes("pos") ||
+    direction === "dr"
+  ) {
+    return "expense";
+  }
+
+  if (
+    direction.includes("credit") ||
+    direction.includes("payment") ||
+    direction.includes("refund") ||
+    direction.includes("reversal") ||
+    direction === "cr"
+  ) {
+    return "income";
+  }
+
+  return null;
+}
 // Get CSV template
 router.get("/template", (req: Request, res: Response) => {
   const template = `DATE,DESCRIPTION,DEBIT,CREDIT,BALANCE
@@ -382,3 +540,33 @@ router.get("/template", (req: Request, res: Response) => {
 });
 
 export default router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

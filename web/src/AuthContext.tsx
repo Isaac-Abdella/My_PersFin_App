@@ -24,8 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       const data = await api("/auth/me");
-      setUser(data);
-    } catch (err) {
+      setUser(data.user);
+    } catch (err: any) {
+      // 401 is expected when not logged in - don't treat as error
+      if (err.status !== 401) {
+        console.error("Auth check error:", err);
+      }
       setUser(null);
     } finally {
       setLoading(false);
@@ -37,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       body: JSON.stringify({ email, password })
     });
-    setUser(data);
+    setUser(data.user);
   };
 
   const register = async (email: string, password: string, firstName?: string, lastName?: string) => {

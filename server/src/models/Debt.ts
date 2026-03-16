@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from "mongoose";
+﻿import mongoose, { Schema, Document } from "mongoose";
 
 export interface IDebt extends Document {
   userId: mongoose.Types.ObjectId;
@@ -8,6 +8,7 @@ export interface IDebt extends Document {
   currentBalance: number;
   interestRate: number; // Annual percentage rate
   minimumPayment: number;
+  dueScheduleType?: "specific" | "monthly" | "biweekly";
   dueDate?: Date;
   accountNumber?: string;
   lender?: string;
@@ -26,6 +27,11 @@ const debtSchema = new Schema<IDebt>({
   currentBalance: { type: Number, required: true },
   interestRate: { type: Number, required: true }, // e.g., 18.5 for 18.5%
   minimumPayment: { type: Number, required: true },
+  dueScheduleType: {
+    type: String,
+    enum: ["specific", "monthly", "biweekly"],
+    default: "specific"
+  },
   dueDate: Date,
   accountNumber: String,
   lender: String,
@@ -33,3 +39,5 @@ const debtSchema = new Schema<IDebt>({
 });
 
 export const Debt = mongoose.model<IDebt>("Debt", debtSchema);
+
+
