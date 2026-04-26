@@ -25,7 +25,7 @@ router.post("/analyze", async (req, res, next) => {
       preferLowCost = true,
     } = req.body;
 
-    if (!currentNetWorth || !goalAmount || !goalYear) {
+    if (currentNetWorth == null || goalAmount == null || goalYear == null) {
       return res.status(400).json({ message: "Missing required parameters" });
     }
 
@@ -38,42 +38,16 @@ router.post("/analyze", async (req, res, next) => {
       retirementAge
     );
 
-    // Save to database
-    const portfolio = await PortfolioRecommendation.create({
-      userId,
-      name: `Investment Goal - $${goalAmount.toLocaleString()} by ${goalYear}`,
-      riskProfile: recommendation.riskProfile,
-      timeHorizon: goalYear - new Date().getFullYear(),
-      investmentGoal: `Reach $${goalAmount.toLocaleString()} by ${goalYear}`,
-      currentNetWorth,
-      goalAmount,
-      goalYear,
-      recommendedAllocation: recommendation.allocation,
-      etfRecommendations: recommendation.etfs,
-      projectedReturns: {
-        conservative: goalAmount * 0.85,
-        moderate: goalAmount * 0.95,
-        aggressive: goalAmount * 1.05,
-      },
-      monthlyInvestmentNeeded: recommendation.monthlyInvestment,
-      successProbability: recommendation.successProbability,
-      assumptions: {
-        inflationRate: 0.025,
-        returnAssumptions: {
-          equities: recommendation.riskProfile === "conservative" ? 0.04 : 
-                    recommendation.riskProfile === "moderate" ? 0.065 : 0.08,
-          fixedIncome: 0.03,
-          alternatives: 0.04,
-          cash: 0.04,
-        },
-      },
-    });
-
-    res.status(201).json({
-      portfolio,
+    // Return recommendation directly without saving to database
+    res.json({
       recommendation: {
-        ...recommendation,
+        riskProfile: recommendation.riskProfile,
+        allocation: recommendation.allocation,
+        etfs: recommendation.etfs,
+        monthlyInvestment: recommendation.monthlyInvestment,
+        successProbability: recommendation.successProbability,
         projections: recommendation.projections.slice(0, 10), // First 10 years
+        recommendations: recommendation.recommendations,
       },
     });
   } catch (err) {
@@ -168,7 +142,7 @@ router.post("/projection", async (req, res, next) => {
       currentAge = 35,
     } = req.body;
 
-    if (!currentAmount || !monthlyInvestment) {
+    if (currentAmount == null || monthlyInvestment == null) {
       return res.status(400).json({ message: "Missing parameters" });
     }
 
@@ -243,7 +217,7 @@ router.post("/success-probability", async (req, res, next) => {
       riskProfile = "moderate",
     } = req.body;
 
-    if (!currentAmount || !monthlyInvestment || !goalAmount || !yearsToGoal) {
+    if (currentAmount == null || monthlyInvestment == null || goalAmount == null || yearsToGoal == null) {
       return res.status(400).json({ message: "Missing parameters" });
     }
 

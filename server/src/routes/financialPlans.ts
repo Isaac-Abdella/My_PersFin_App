@@ -25,15 +25,16 @@ router.post("/", async (req, res, next) => {
       monthlyContribution,
       monthlyExpenses,
       desiredRetirementIncome,
+      employerPensionMonthly = 0,
     } = req.body;
 
     if (
-      !currentAge ||
-      !currentIncome ||
-      !currentSavings ||
-      !monthlyContribution ||
-      !monthlyExpenses ||
-      !desiredRetirementIncome
+      currentAge == null ||
+      currentIncome == null ||
+      currentSavings == null ||
+      monthlyContribution == null ||
+      monthlyExpenses == null ||
+      desiredRetirementIncome == null
     ) {
       return res.status(400).json({ message: "Missing required parameters" });
     }
@@ -46,7 +47,8 @@ router.post("/", async (req, res, next) => {
       currentSavings,
       monthlyContribution,
       desiredRetirementIncome,
-      monthlyExpenses
+      monthlyExpenses,
+      employerPensionMonthly
     );
 
     // Save to database
@@ -135,7 +137,7 @@ router.post("/retirement-analysis", async (req, res, next) => {
       oasStartAge = 65,
     } = req.body;
 
-    if (!projectedNetWorth || !desiredAnnualIncome) {
+    if (projectedNetWorth == null || desiredAnnualIncome == null) {
       return res.status(400).json({ message: "Missing parameters" });
     }
 
@@ -195,7 +197,7 @@ router.post("/emergency-fund", async (req, res, next) => {
   try {
     const { monthlyExpenses, currentSavings, targetMonths = 6 } = req.body;
 
-    if (!monthlyExpenses || !currentSavings) {
+    if (monthlyExpenses == null || currentSavings == null) {
       return res.status(400).json({ message: "Missing parameters" });
     }
 

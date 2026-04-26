@@ -38,6 +38,7 @@ export default function FinancialPlanning(): ReactElement {
   const [monthlyContribution, setMonthlyContribution] = useState(1000);
   const [monthlyExpenses, setMonthlyExpenses] = useState(5000);
   const [desiredRetirementIncome, setDesiredRetirementIncome] = useState(60000);
+  const [employerPensionMonthly, setEmployerPensionMonthly] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const [retirement, setRetirement] = useState<RetirementData | null>(null);
@@ -48,7 +49,7 @@ export default function FinancialPlanning(): ReactElement {
   const generatePlan = async () => {
     setLoading(true);
     try {
-      const response = await api("/api/financial-plans", {
+      const response = await api("/financial-plans", {
         method: "POST",
         body: JSON.stringify({
           name: "Financial Plan",
@@ -59,6 +60,7 @@ export default function FinancialPlanning(): ReactElement {
           monthlyContribution,
           monthlyExpenses,
           desiredRetirementIncome,
+          employerPensionMonthly,
         }),
       });
 
@@ -165,6 +167,17 @@ export default function FinancialPlanning(): ReactElement {
               min="0"
             />
           </div>
+          <div className="input-group">
+            <label>Employer Pension (Monthly)</label>
+            <input
+              type="number"
+              value={employerPensionMonthly}
+              onChange={(e) => setEmployerPensionMonthly(Number(e.target.value))}
+              min="0"
+              placeholder="e.g., Gov't of BC Pension"
+            />
+            <small>Your guaranteed monthly pension income</small>
+          </div>
         </div>
         <button onClick={generatePlan} disabled={loading} className="btn-primary">
           {loading ? "Analyzing..." : "📊 Generate Financial Plan"}
@@ -211,6 +224,13 @@ export default function FinancialPlanning(): ReactElement {
                   <span className="value">${retirement.OASMonthly.toLocaleString()}/month</span>
                   <small>Old Age Security</small>
                 </div>
+                {retirement.EmployerPensionMonthly > 0 && (
+                  <div className="income-card">
+                    <span className="label">Employer Pension</span>
+                    <span className="value">${retirement.EmployerPensionMonthly.toLocaleString()}/month</span>
+                    <small>Government of BC Pension</small>
+                  </div>
+                )}
                 <div className="income-card">
                   <span className="label">Portfolio Withdrawal</span>
                   <span className="value">
@@ -224,6 +244,7 @@ export default function FinancialPlanning(): ReactElement {
                     ${(
                       retirement.CPPMonthly +
                       retirement.OASMonthly +
+                      retirement.EmployerPensionMonthly +
                       retirement.PortfolioWithdrawalMonthly
                     ).toLocaleString()}/month
                   </span>

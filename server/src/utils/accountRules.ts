@@ -307,6 +307,7 @@ export function getAccountTypeDescription(accountType: string): string {
     RRIF: "Registered Retirement Income Fund - Income stream from RRSP conversion, mandatory minimums at 65+",
     LIF: "Life Income Fund - Income stream from locked-in pensions, maximum withdrawal limits apply",
     LIRA: "Locked-in Retirement Account - Locked-in pension funds, limited withdrawals",
+    RDSP: "Registered Disability Savings Plan - Tax-sheltered savings for disabled persons, eligible for CCESG grants and CDBS bonds",
     NON_REGISTERED: "Non-Registered Account - Investment account without tax sheltering, subject to capital gains tax",
     CRYPTO: "Cryptocurrency Account - Digital assets subject to capital gains tax on disposal",
     CORPORATE: "Corporate/Business Account - Business account for self-employed and incorporated businesses"

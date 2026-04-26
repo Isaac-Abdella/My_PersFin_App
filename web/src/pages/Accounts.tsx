@@ -96,6 +96,13 @@ const Accounts: React.FC = () => {
           endpoint += '/lira/create';
           payload.provinceOfIssuance = formData.provinceOfIssuance;
           break;
+        case 'RDSP':
+          endpoint += '/rdsp/create';
+          payload.beneficiaryName = formData.beneficiaryName;
+          payload.beneficiaryBirthDate = new Date().toISOString();
+          payload.beneficiarySIN = '000-000-000';
+          payload.designatedResponsible = formData.beneficiaryName;
+          break;
         case 'NON_REGISTERED':
           endpoint += '/non-registered/create';
           break;
@@ -203,6 +210,21 @@ const Accounts: React.FC = () => {
                         setFormData({ ...formData, beneficiaryName: e.target.value })
                       }
                       required
+                    />
+                  </div>
+                )}
+
+                {selectedType === 'RDSP' && (
+                  <div className="form-group">
+                    <label>Beneficiary Name (Disabled Person)</label>
+                    <input
+                      type="text"
+                      value={formData.beneficiaryName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, beneficiaryName: e.target.value })
+                      }
+                      required
+                      placeholder="Name of person with disability"
                     />
                   </div>
                 )}

@@ -7,6 +7,7 @@ import { RESPAccount } from "../models/RESPAccount";
 import { RRIFAccount } from "../models/RRIFAccount";
 import { LIFAccount } from "../models/LIFAccount";
 import { LIRAAccount } from "../models/LIRAAccount";
+import { RDSPAccount } from "../models/RDSPAccount";
 import { NonRegisteredAccount } from "../models/NonRegisteredAccount";
 import { CryptoAccount } from "../models/CryptoAccount";
 import { CorporateAccount } from "../models/CorporateAccount";
@@ -270,6 +271,176 @@ router.get("/lira", async (req, res) => {
   }
 });
 
+// ============ RDSP Account Routes ============
+router.post("/rdsp/create", async (req, res) => {
+  try {
+    const {
+      accountName,
+      beneficiaryName,
+      beneficiaryBirthDate,
+      beneficiarySIN,
+      designatedResponsible,
+    } = req.body;
+    const userId = (req.user as any).id;
+
+    // Calculate beneficiary age
+    const birthDate = new Date(beneficiaryBirthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    const account = new RDSPAccount({
+      userId,
+      accountName,
+      beneficiaryName,
+      beneficiaryBirthDate: new Date(beneficiaryBirthDate),
+      beneficiarySIN,
+      beneficiaryAge: age,
+      designatedResponsible,
+    });
+    await account.save();
+    res.json(account);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.get("/rdsp", async (req, res) => {
+  try {
+    const userId = (req.user as any).id;
+    const accounts = await RDSPAccount.find({ userId });
+    res.json(accounts);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.get("/rdsp/:id", async (req, res) => {
+  try {
+    const userId = (req.user as any).id;
+    const account = await RDSPAccount.findById(req.params.id);
+    if (!account || account.userId.toString() !== userId) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+    res.json(account);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.post("/rdsp/:id/contribution", async (req, res) => {
+  try {
+    const { amount, type } = req.body;
+    const userId = (req.user as any).id;
+    const account = await RDSPAccount.findById(req.params.id);
+
+    if (!account || account.userId.toString() !== userId) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    // 2024 RDSP annual contribution limit: $2,500
+    if (account.currentYearContributions + amount > 2500) {
+      return res.status(400).json({
+        error: "Exceeds annual contribution limit of $2,500",
+        currentYear: account.currentYearContributions,
+        remaining: 2500 - account.currentYearContributions,
+      });
+    }
+
+    // Lifetime contribution limit: $200,000
+    if (account.balance + amount > 200000) {
+      return res.status(400).json({
+        error: "Exceeds lifetime contribution limit of $200,000",
+        current: account.balance,
+        limit: 200000,
+      });
+    }
+
+    account.contributions.push({
+      year: new Date().getFullYear(),
+      amount,
+      date: new Date(),
+      type: type || "personal",
+    });
+    account.currentYearContributions += amount;
+    account.balance += amount;
+    await account.save();
+
+    res.json({
+      message: "Contribution added successfully",
+      account,
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.post("/rdsp/:id/grant", async (req, res) => {
+  try {
+    const { amount, grantType } = req.body;
+    const userId = (req.user as any).id;
+    const account = await RDSPAccount.findById(req.params.id);
+
+    if (!account || account.userId.toString() !== userId) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    // CCESG: up to $3,500/year (lifetime limit: $80,000)
+    // CEBS: up to $1,500/year (lifetime limit: $90,000)
+    const grantLimits = {
+      ccesg: { annual: 3500, lifetime: 80000 },
+      cebs: { annual: 1500, lifetime: 90000 },
+    };
+
+    const limits = grantLimits[grantType as keyof typeof grantLimits];
+    if (!limits) {
+      return res.status(400).json({ error: "Invalid grant type" });
+    }
+
+    if (amount > limits.annual) {
+      return res.status(400).json({
+        error: `Exceeds annual ${grantType.toUpperCase()} limit of $${limits.annual}`,
+      });
+    }
+
+    const grantTracker =
+      grantType === "ccesg" ? account.grantRoom : account.bondRoom;
+    if (grantTracker - amount < 0) {
+      return res.status(400).json({
+        error: `Exceeds lifetime ${grantType.toUpperCase()} limit of $${limits.lifetime}`,
+        remaining: grantTracker,
+      });
+    }
+
+    account.grants.push({
+      year: new Date().getFullYear(),
+      amount,
+      date: new Date(),
+      grantType: grantType as "ccesg" | "cesg",
+    });
+
+    if (grantType === "ccesg") {
+      account.grantRoom -= amount;
+    }
+
+    account.balance += amount;
+    await account.save();
+
+    res.json({
+      message: `${grantType.toUpperCase()} grant added successfully`,
+      account,
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // ============ Non-Registered Account Routes ============
 router.post("/non-registered/create", async (req, res) => {
   try {
@@ -422,6 +593,7 @@ router.get("/info/account-types", (req, res) => {
     { type: "RRIF", description: getAccountTypeDescription("RRIF") },
     { type: "LIF", description: getAccountTypeDescription("LIF") },
     { type: "LIRA", description: getAccountTypeDescription("LIRA") },
+    { type: "RDSP", description: getAccountTypeDescription("RDSP") },
     { type: "NON_REGISTERED", description: getAccountTypeDescription("NON_REGISTERED") },
     { type: "CRYPTO", description: getAccountTypeDescription("CRYPTO") },
     { type: "CORPORATE", description: getAccountTypeDescription("CORPORATE") },

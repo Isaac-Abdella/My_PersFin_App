@@ -54,7 +54,7 @@ export default function InvestmentRecommendations(): ReactElement {
   const analyzeGoal = async () => {
     setLoading(true);
     try {
-      const response = await api("/api/investment-recommendations/analyze", {
+      const response = await api("/investment-recommendations/analyze", {
         method: "POST",
         body: JSON.stringify({
           currentNetWorth,

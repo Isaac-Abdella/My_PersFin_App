@@ -10,6 +10,7 @@ export interface RetirementProjection {
   annualRetirementIncome: number;
   CPPMonthly: number;
   OASMonthly: number;
+  EmployerPensionMonthly: number;
   PortfolioWithdrawalMonthly: number;
   yearsOfRetirement: number;
   successProbability: number;
@@ -226,13 +227,15 @@ export function analyzeRetirementReadiness(
   desiredAnnualIncome: number,
   cpMonthly: number,
   oasMonthly: number,
+  employerPensionMonthly: number = 0,
   yearsOfRetirement: number = 30
 ): RetirementProjection {
   // Required portfolio value for sustainable withdrawals
   const cppAnnual = cpMonthly * 12;
   const oasAnnual = oasMonthly * 12;
-  const publicIncomeAnnual = cppAnnual + oasAnnual;
-  const portfolioIncomeNeeded = Math.max(0, desiredAnnualIncome - publicIncomeAnnual);
+  const employerPensionAnnual = employerPensionMonthly * 12;
+  const guaranteedIncomeAnnual = cppAnnual + oasAnnual + employerPensionAnnual;
+  const portfolioIncomeNeeded = Math.max(0, desiredAnnualIncome - guaranteedIncomeAnnual);
 
   // 4% safe withdrawal rule
   const requiredPortfolio = portfolioIncomeNeeded / 0.04;
@@ -245,7 +248,7 @@ export function analyzeRetirementReadiness(
 
   // Calculate actual retirement income
   const portfolioWithdrawal = projectedNetWorth * 0.04; // Safe 4% rule
-  const totalRetirementIncome = publicIncomeAnnual + portfolioWithdrawal;
+  const totalRetirementIncome = guaranteedIncomeAnnual + portfolioWithdrawal;
 
   return {
     retirementAge: 65, // Placeholder
@@ -253,6 +256,7 @@ export function analyzeRetirementReadiness(
     annualRetirementIncome: Math.round(totalRetirementIncome),
     CPPMonthly: cpMonthly,
     OASMonthly: oasMonthly,
+    EmployerPensionMonthly: Math.round(employerPensionMonthly),
     PortfolioWithdrawalMonthly: Math.round(portfolioWithdrawal / 12),
     yearsOfRetirement,
     successProbability,
@@ -304,7 +308,8 @@ export function generateFinancialPlan(
   currentNetWorth: number,
   monthlyContribution: number,
   desiredRetirementIncome: number,
-  monthlyExpenses: number
+  monthlyExpenses: number,
+  employerPensionMonthly: number = 0
 ): {
   retirementProjection: RetirementProjection;
   emergencyFund: EmergencyFundAnalysis;
@@ -334,7 +339,8 @@ export function generateFinancialPlan(
     retirementNetWorth,
     desiredRetirementIncome,
     cpp.monthlyAt65,
-    oas
+    oas,
+    employerPensionMonthly
   );
 
   const emergencyFund = analyzeEmergencyFund(monthlyExpenses, currentNetWorth);
@@ -356,6 +362,10 @@ export function generateFinancialPlan(
     );
   } else if (emergencyFund.status === "well-funded") {
     recommendations.push(`✅ Strong emergency fund! You have ${emergencyFund.monthsCovered} months of expenses saved.`);
+  }
+
+  if (employerPensionMonthly > 0) {
+    recommendations.push(`✅ Great! Your Government of BC Pension ($${Math.round(employerPensionMonthly).toLocaleString()}/month) provides strong retirement income security.`);
   }
 
   recommendations.push(`💡 Consider focusing on TFSA first ($7,000/year tax-free) before regular investments.`);

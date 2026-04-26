@@ -118,9 +118,10 @@ export default function DebtOptimization(): ReactElement {
 
   const fetch = async () => {
     try {
-      const debtRes = await api("/api/debts");
-      if (debtRes.debts) {
-        setDebts(debtRes.debts);
+      const debtRes = await api("/debts");
+      // debtRes is the array directly, not wrapped in a debts property
+      if (Array.isArray(debtRes)) {
+        setDebts(debtRes);
       }
     } catch (err) {
       console.error(err);
@@ -141,7 +142,7 @@ export default function DebtOptimization(): ReactElement {
 
     setLoading(true);
     try {
-      const response = await api("/api/debt-strategies/analyze", {
+      const response = await api("/debt-strategies/analyze", {
         method: "POST",
         body: JSON.stringify({
           debtIds: selectedDebts,
@@ -174,7 +175,7 @@ export default function DebtOptimization(): ReactElement {
 
     setLoading(true);
     try {
-      const response = await api("/api/debt-strategies/lump-sum-optimization", {
+      const response = await api("/debt-strategies/lump-sum-optimization", {
         method: "POST",
         body: JSON.stringify({
           debtIds: selectedDebts,
@@ -200,7 +201,7 @@ export default function DebtOptimization(): ReactElement {
 
     setLoading(true);
     try {
-      const response = await api("/api/debt-strategies/mortgage-acceleration", {
+      const response = await api("/debt-strategies/mortgage-acceleration", {
         method: "POST",
         body: JSON.stringify({
           debtId: mortgageDebt,
@@ -226,7 +227,7 @@ export default function DebtOptimization(): ReactElement {
 
     setLoading(true);
     try {
-      const response = await api("/api/debt-strategies/consolidation-analysis", {
+      const response = await api("/debt-strategies/consolidation-analysis", {
         method: "POST",
         body: JSON.stringify({
           debtIds: selectedDebts,

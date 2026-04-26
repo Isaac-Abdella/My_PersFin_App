@@ -3,6 +3,46 @@ import { api } from "../api";
 import type { FinancialOverview, SpendingByCategory, BudgetComparison, Account } from "../types";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 
+// Custom label renderer to position all labels on the right side
+const renderCustomLabel = (entry: any) => {
+  const { cx, cy, midAngle, innerRadius, outerRadius, category, amount } = entry;
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius + 60;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  
+  return (
+    <text 
+      x={x} 
+      y={y} 
+      fill={CATEGORY_COLORS[category] || '#333'} 
+      textAnchor={x > cx ? 'start' : 'start'} 
+      dominantBaseline="central"
+      fontSize="12"
+      fontWeight="500"
+    >
+      {`${category}: $${amount.toFixed(0)}`}
+    </text>
+  );
+};
+
+// Category color mapping - consistent colors for each category
+const CATEGORY_COLORS: { [key: string]: string } = {
+  'Groceries': '#FF6B6B',
+  'Transport': '#4ECDC4',
+  'Entertainment': '#FFE66D',
+  'Utilities': '#95E1D3',
+  'Dining': '#F38181',
+  'Shopping': '#AA96DA',
+  'Healthcare': '#FCBAD3',
+  'Insurance': '#A8D8EA',
+  'Rent': '#FF8A80',
+  'Salary': '#81C784',
+  'Bonus': '#FFD54F',
+  'Interest': '#64B5F6',
+  'Other': '#B0BEC5'
+};
+
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 export default function Dashboard() {
@@ -336,26 +376,58 @@ export default function Dashboard() {
         <div className="card chart-card">
           <h3>Spending by Category</h3>
           {spending.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={spending}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => entry.category}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="amount"
-                >
-                  {spending.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={500}>
+                <PieChart>
+                  <Pie
+                    data={spending}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={renderCustomLabel}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="amount"
+                  >
+                    {spending.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={CATEGORY_COLORS[entry.category] || COLORS[index % COLORS.length]} 
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Custom Legend with Category Colors */}
+              <div className="category-legend" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: '0.75rem',
+                marginTop: '1rem',
+                padding: '1rem',
+                backgroundColor: '#f9f9f9',
+                borderRadius: '4px'
+              }}>
+                {spending.map((entry, index) => (
+                  <div key={entry.category} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      backgroundColor: CATEGORY_COLORS[entry.category] || COLORS[index % COLORS.length],
+                      borderRadius: '2px'
+                    }} />
+                    <span style={{ fontSize: '0.9rem' }}>
+                      {entry.category}: <strong>${entry.amount.toFixed(2)}</strong>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <p>No spending data available</p>
           )}
