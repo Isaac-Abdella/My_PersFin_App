@@ -20,6 +20,9 @@ import importRoutes from "./routes/import";
 import analyticsRoutes from "./routes/analytics";
 import categoriesRoutes from "./routes/categories";
 import taxRoutes from "./routes/tax";
+import goalsRoutes from "./routes/goals";
+import netWorthRoutes from "./routes/netWorth";
+import billsRoutes from "./routes/bills";
 
 const app = express();
 
@@ -39,12 +42,21 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '50mb' }));
 
+const store = new MongoStore({ 
+  mongoUrl: MONGO_URI,
+  touchAfter: 24 * 3600 // lazy session update
+});
+
+store.on("error", (err) => {
+  console.error("Session store error:", err);
+});
+
 app.use(
   session({
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: new MongoStore({ mongoUrl: MONGO_URI }),
+    store: store,
     cookie: {
       secure: false,       // set true + trust proxy in production with HTTPS
       httpOnly: true,
@@ -69,6 +81,9 @@ app.use("/api/import", importRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/tax-accounts", taxRoutes);
+app.use("/api/goals", goalsRoutes);
+app.use("/api/net-worth", netWorthRoutes);
+app.use("/api/bills", billsRoutes);
 
 // Error handler
 app.use((err: any, req: any, res: any, next: any) => {

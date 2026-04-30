@@ -2,25 +2,37 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import passport from "passport";
 import { User } from "../models/User";
+import crypto from "crypto";
 
 const router = Router();
 
 router.post("/register", async (req, res, next) => {
   try {
+    console.log("Register endpoint hit with body:", req.body);
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: "Email and password required" });
 
+    console.log("Checking for existing user with email:", email);
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: "Email already used" });
 
+    console.log("Hashing password...");
     const passwordHash = await bcrypt.hash(password, 10);
+    console.log("Creating user...");
     const user = await User.create({ email, passwordHash });
+    console.log("User created:", user.id);
 
+    console.log("Logging in user...");
     req.login(user, err => {
-      if (err) return next(err);
+      if (err) {
+        console.error("Login error during registration:", err);
+        return next(err);
+      }
+      console.log("Registration successful for user:", user.id);
       res.json({ user: { id: user.id, email: user.email } });
     });
   } catch (err) {
+    console.error("Registration error:", err);
     next(err);
   }
 });
@@ -62,6 +74,66 @@ router.get("/me", (req, res) => {
   const user = req.user as any;
   console.log("User found:", user);
   res.json({ user: { id: user.id || user._id, email: user.email } });
+});
+
+router.post("/forgot-password", async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Don't reveal if email exists for security
+      return res.json({ message: "If an account exists, a reset link will be sent" });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+
+    user.resetToken = resetToken;
+    user.resetTokenExpires = resetTokenExpires;
+    await user.save();
+
+    // TODO: In production, send email with reset link
+    // For development, log the token
+    console.log(`Password reset token for ${email}: ${resetToken}`);
+    console.log(`Reset link: http://localhost:5173/reset-password?token=${resetToken}`);
+
+    res.json({ message: "If an account exists, a reset link will be sent" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/reset-password", async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ message: "Token and password are required" });
+    }
+
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(password, 10);
+    user.passwordHash = passwordHash;
+    user.resetToken = undefined;
+    user.resetTokenExpires = undefined;
+    await user.save();
+
+    console.log(`Password reset successful for ${user.email}`);
+    res.json({ message: "Password has been reset successfully" });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

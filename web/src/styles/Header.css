@@ -1,0 +1,156 @@
+.header {
+  background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%);
+  color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-logo h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+}
+
+.user-dropdown {
+  position: relative;
+}
+
+.user-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.user-menu-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.user-menu-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.user-menu-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.user-menu-btn span {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  display: block;
+  padding: 0.75rem 1rem;
+  color: #111827;
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-size: 0.95rem;
+  transition: background 0.15s;
+}
+
+.dropdown-item:hover:not(:disabled) {
+  background: #F9FAFB;
+}
+
+.dropdown-item.email {
+  font-size: 0.85rem;
+  color: #6B7280;
+  padding: 0.5rem 1rem;
+  cursor: default;
+}
+
+.dropdown-menu hr {
+  margin: 0;
+  border: none;
+  border-top: 1px solid #E5E7EB;
+}
+
+.logout-btn {
+  color: #EF4444;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+}
+
+.logout-btn:hover:not(:disabled) {
+  background: #FEE2E2;
+}
+
+.logout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .header-content {
+    padding: 0 1rem;
+  }
+
+  .user-menu-btn span {
+    display: none;
+  }
+
+  .header-logo h1 {
+    font-size: 1.25rem;
+  }
+}

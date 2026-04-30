@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 
 export default function Login() {
+  const navigate = useNavigate();
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -72,6 +74,14 @@ export default function Login() {
             {loading ? "Loading..." : isLogin ? "Login" : "Register"}
           </button>
         </form>
+        
+        {isLogin && (
+          <p>
+            <button className="link-button" onClick={() => navigate("/forgot-password")}>
+              Forgot Password?
+            </button>
+          </p>
+        )}
         
         <p>
           {isLogin ? "Don't have an account? " : "Already have an account? "}
