@@ -44,46 +44,128 @@ import Header from "./components/Header";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./App.css";
 
-const NAV = [
-  { to: "/",                        label: "Dashboard" },
-  { to: "/accounts",                label: "Accounts" },
-  { to: "/transactions",            label: "Transactions" },
-  { to: "/budgets",                 label: "Budgets" },
-  { to: "/debts",                   label: "Debts" },
-  { to: "/debt-optimization",       label: "Debt Optimization" },
-  { to: "/goals",                   label: "Goals" },
-  { to: "/net-worth",               label: "Net Worth" },
-  { to: "/properties",              label: "Properties" },
-  { to: "/bills",                   label: "Bills" },
-  { to: "/recurring",               label: "Recurring" },
-  { to: "/investment-recommendations", label: "Investments" },
-  { to: "/portfolio-rebalancing",   label: "Rebalancing" },
-  { to: "/investment-performance",  label: "Performance" },
-  { to: "/etf-portfolios",          label: "ETF Portfolios" },
-  { to: "/gic-tracker",             label: "GIC Tracker" },
-  { to: "/insurance-planning",      label: "Insurance" },
-  { to: "/paycheck-calculator",     label: "Paycheck Calc" },
-  { to: "/income-types",            label: "Income Types" },
-  { to: "/inflation-tracker",       label: "Inflation Tracker" },
-  { to: "/financial-planning",      label: "Financial Planning" },
-  { to: "/tax-planning",            label: "Tax Planning" },
-  { to: "/rrsp-vs-tfsa",            label: "RRSP vs TFSA" },
-  { to: "/tfsa-room",               label: "TFSA Room" },
-  { to: "/retirement",              label: "Retirement" },
-  { to: "/spending-heatmap",        label: "Spending Heatmap" },
-  { to: "/annual-review",           label: "Annual Review" },
-  { to: "/reports",                 label: "Reports & Export" },
-  { to: "/notifications",           label: "Notifications" },
-  { to: "/bank-connections",         label: "Bank Connections" },
-  { to: "/import",                  label: "Import CSV" },
-  { to: "/settings",                label: "Settings" },
+const NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { to: "/",           label: "Dashboard" },
+      { to: "/net-worth",  label: "Net Worth"  },
+    ],
+  },
+  {
+    label: "Cash Flow",
+    items: [
+      { to: "/accounts",            label: "Accounts"         },
+      { to: "/transactions",        label: "Transactions"     },
+      { to: "/budgets",             label: "Budgets"          },
+      { to: "/bills",               label: "Bills"            },
+      { to: "/recurring",           label: "Recurring"        },
+      { to: "/spending-heatmap",    label: "Spending Heatmap" },
+      { to: "/paycheck-calculator", label: "Paycheck Calc"    },
+    ],
+  },
+  {
+    label: "Debt",
+    items: [
+      { to: "/debts",             label: "Debts"            },
+      { to: "/debt-optimization", label: "Debt Optimization"},
+    ],
+  },
+  {
+    label: "Goals & Savings",
+    items: [
+      { to: "/goals",         label: "Goals"         },
+      { to: "/annual-review", label: "Annual Review" },
+    ],
+  },
+  {
+    label: "Investments",
+    items: [
+      { to: "/investment-recommendations", label: "Recommendations" },
+      { to: "/portfolio-rebalancing",      label: "Rebalancing"     },
+      { to: "/investment-performance",     label: "Performance"     },
+      { to: "/etf-portfolios",             label: "ETF Portfolios"  },
+      { to: "/gic-tracker",                label: "GIC Tracker"     },
+      { to: "/properties",                 label: "Properties"      },
+    ],
+  },
+  {
+    label: "Tax & Registered",
+    items: [
+      { to: "/tax-planning",  label: "Tax Planning"  },
+      { to: "/rrsp-vs-tfsa",  label: "RRSP vs TFSA"  },
+      { to: "/tfsa-room",     label: "TFSA Room"     },
+      { to: "/income-types",  label: "Income Types"  },
+    ],
+  },
+  {
+    label: "Insurance",
+    items: [
+      { to: "/insurance-planning", label: "Insurance Planning" },
+    ],
+  },
+  {
+    label: "Retirement & Planning",
+    items: [
+      { to: "/retirement",        label: "Retirement Projector" },
+      { to: "/financial-planning",label: "Financial Planning"   },
+      { to: "/inflation-tracker", label: "Inflation Tracker"    },
+    ],
+  },
+  {
+    label: "Reports & Tools",
+    items: [
+      { to: "/reports",          label: "Reports & Export"  },
+      { to: "/import",           label: "Import CSV"        },
+      { to: "/bank-connections", label: "Bank Connections"  },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { to: "/notifications", label: "Notifications" },
+      { to: "/settings",      label: "Settings"      },
+    ],
+  },
 ];
+
+/** Returns the group label that owns the given pathname, or null. */
+function activeGroupFor(pathname: string): string | null {
+  return NAV_GROUPS.find(g =>
+    g.items.some(item =>
+      item.to === "/"
+        ? pathname === "/"
+        : pathname === item.to || pathname.startsWith(item.to + "/")
+    )
+  )?.label ?? null;
+}
+
+/** Builds a collapsed map: every group true (collapsed) except the active one. */
+function buildCollapsed(pathname: string): Record<string, boolean> {
+  const active = activeGroupFor(pathname);
+  const map: Record<string, boolean> = {};
+  NAV_GROUPS.forEach(g => { map[g.label] = g.label !== active; });
+  return map;
+}
 
 function Layout() {
   const { user } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // All groups collapsed on mount except the one owning the current route
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
+    () => buildCollapsed(location.pathname)
+  );
+
+  const toggleGroup = (label: string) =>
+    setCollapsed(c => ({ ...c, [label]: !c[label] }));
+
+  // On every navigation: collapse all groups, expand only the active one
+  useEffect(() => {
+    setCollapsed(buildCollapsed(location.pathname));
+  }, [location.pathname]);
 
   // Close mobile sidebar on navigation
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
@@ -125,19 +207,36 @@ function Layout() {
 
       <div className="app-container">
         <nav className={`sidebar${mobileOpen ? " mobile-open" : ""}`}>
-          <ul>
-            {NAV.map(({ to, label }) => (
-              <li key={to}>
-                <NavLink
-                  to={to}
-                  end={to === "/"}
-                  className={({ isActive }) => isActive ? "active" : ""}
+          {NAV_GROUPS.map(group => {
+            const isCollapsed = !!collapsed[group.label];
+            return (
+              <div key={group.label} className="sidebar-group">
+                <button
+                  className="sidebar-group-header"
+                  onClick={() => toggleGroup(group.label)}
+                  aria-expanded={!isCollapsed}
                 >
-                  {label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+                  <span>{group.label}</span>
+                  <span className={`sidebar-chevron${isCollapsed ? "" : " open"}`}>›</span>
+                </button>
+                {!isCollapsed && (
+                  <ul>
+                    {group.items.map(({ to, label }) => (
+                      <li key={to}>
+                        <NavLink
+                          to={to}
+                          end={to === "/"}
+                          className={({ isActive }) => isActive ? "active" : ""}
+                        >
+                          {label}
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="content-panel">

@@ -123,6 +123,54 @@ body {
   opacity: 1;
 }
 
+/* ── Sidebar groups ──────────────────────────────── */
+.sidebar-group {
+  margin-bottom: 0.15rem;
+}
+
+.sidebar-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--sidebar-text);
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+  margin-top: 0.45rem;
+  text-align: left;
+}
+
+.sidebar-group-header:hover {
+  opacity: 1;
+  background: var(--sidebar-hover);
+}
+
+.sidebar-chevron {
+  display: inline-block;
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.sidebar-chevron.open {
+  transform: rotate(90deg);
+}
+
+.sidebar-group ul {
+  margin-bottom: 0.1rem;
+}
+
 /* Hamburger button — hidden on desktop */
 .hamburger-btn {
   display: none;
