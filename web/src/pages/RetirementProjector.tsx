@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ComposedChart, Area } from "recharts";
 
 const CAD = (n: number) => n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
 
@@ -68,6 +68,68 @@ function projectRetirement(
   };
 }
 
+function randNormal(mean: number, std: number): number {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+interface MCPoint { age: number; p10: number; p50: number; p90: number; base: number; band: number; }
+interface MCResult { successRate: number; comfortRate: number; medianFinal: number; points: MCPoint[]; }
+
+function runMonteCarlo(
+  currentAge: number,
+  retirementAge: number,
+  currentSavings: number,
+  monthlyContribution: number,
+  monthlyGap: number,
+  sims = 3000
+): MCResult {
+  const endAge = 95;
+  const totalYears = endAge - currentAge;
+  const retireYear = retirementAge - currentAge;
+  const MEAN_RETURN = 0.06 / 12;
+  const STD_RETURN = 0.12 / Math.sqrt(12);
+
+  let successes = 0;
+  let comforts = 0;
+  const yearlyBalances: number[][] = Array.from({ length: totalYears + 1 }, () => []);
+
+  for (let s = 0; s < sims; s++) {
+    let bal = currentSavings;
+    yearlyBalances[0].push(bal);
+    for (let y = 1; y <= totalYears; y++) {
+      for (let m = 0; m < 12; m++) {
+        const r = randNormal(MEAN_RETURN, STD_RETURN);
+        bal = bal * (1 + r) + (y <= retireYear ? monthlyContribution : -monthlyGap);
+        if (bal < 0) bal = 0;
+      }
+      yearlyBalances[y].push(bal);
+    }
+    if (yearlyBalances[totalYears][s] > 0) successes++;
+    if (yearlyBalances[totalYears][s] > monthlyGap * 12 * 2) comforts++;
+  }
+
+  const pct = (arr: number[], p: number) => {
+    const sorted = [...arr].sort((a, b) => a - b);
+    return sorted[Math.min(Math.floor(p * sorted.length), sorted.length - 1)];
+  };
+
+  const points: MCPoint[] = yearlyBalances.map((vals, i) => {
+    const p10 = pct(vals, 0.1);
+    const p90 = pct(vals, 0.9);
+    return { age: currentAge + i, p10, p50: pct(vals, 0.5), p90, base: p10, band: p90 - p10 };
+  });
+
+  return {
+    successRate: (successes / sims) * 100,
+    comfortRate: (comforts / sims) * 100,
+    medianFinal: pct(yearlyBalances[totalYears], 0.5),
+    points,
+  };
+}
+
 export default function RetirementProjector() {
   const [currentAge, setCurrentAge] = useState(35);
   const [retirementAge, setRetirementAge] = useState(65);
@@ -91,6 +153,17 @@ export default function RetirementProjector() {
 
   const swr = result.safeWithdrawalRate * 100;
   const swrOk = swr <= 4;
+
+  const [mcResult, setMcResult] = useState<MCResult | null>(null);
+  const [runningMC, setRunningMC] = useState(false);
+
+  const runMC = () => {
+    setRunningMC(true);
+    setTimeout(() => {
+      setMcResult(runMonteCarlo(currentAge, retirementAge, currentSavings, monthlyContribution, result.annualGap / 12));
+      setRunningMC(false);
+    }, 0);
+  };
 
   const inputRow = (label: string, value: number, setter: (v: number) => void, opts: { min?: number; max?: number; step?: number; prefix?: string; suffix?: string }) => (
     <div style={{ marginBottom: 8 }}>
@@ -186,6 +259,57 @@ export default function RetirementProjector() {
               <li>OAS is clawed back above ~$90,997 of net income. Deferring to 70 boosts it 36%.</li>
               <li>A balanced ETF (e.g., XBAL) has historically returned ~6–7% annually before inflation.</li>
             </ul>
+          </div>
+
+          {/* Monte Carlo */}
+          <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <h3 style={{ fontSize: "0.75rem", fontWeight: 600, margin: 0 }}>Monte Carlo Simulation (3,000 scenarios)</h3>
+              <button
+                onClick={runMC}
+                disabled={runningMC}
+                style={{ fontSize: "0.72rem", padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-card)", cursor: "pointer" }}
+              >
+                {runningMC ? "Running…" : "▶ Run Simulation"}
+              </button>
+            </div>
+            {!mcResult && (
+              <p style={{ fontSize: "0.72rem", color: "var(--text-light)", margin: 0 }}>
+                Click Run Simulation to model 3,000 randomised market scenarios and see your probability of success.
+              </p>
+            )}
+            {mcResult && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 10 }}>
+                  {[
+                    { label: "Success Rate", value: `${mcResult.successRate.toFixed(0)}%`, color: mcResult.successRate >= 80 ? "#059669" : mcResult.successRate >= 60 ? "#d97706" : "#dc2626", sub: "funds last to age 95" },
+                    { label: "Comfort Rate", value: `${mcResult.comfortRate.toFixed(0)}%`, color: mcResult.comfortRate >= 70 ? "#059669" : "#d97706", sub: "2-yr buffer at 95" },
+                    { label: "Median at Age 95", value: CAD(mcResult.medianFinal), color: "var(--text)", sub: "50th percentile" },
+                  ].map(c => (
+                    <div key={c.label} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: "0.65rem", color: "var(--text-light)", textTransform: "uppercase" }}>{c.label}</div>
+                      <div style={{ fontSize: "0.88rem", fontWeight: 700, color: c.color }}>{c.value}</div>
+                      <div style={{ fontSize: "0.65rem", color: "var(--text-light)" }}>{c.sub}</div>
+                    </div>
+                  ))}
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <ComposedChart data={mcResult.points}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="age" tick={{ fontSize: 11 }} label={{ value: "Age", position: "insideBottom", offset: -2 }} />
+                    <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v) => CAD(Number(v))} labelFormatter={(l) => `Age ${l}`} />
+                    <ReferenceLine x={retirementAge} stroke="#d97706" strokeDasharray="6 3" />
+                    <Area type="monotone" dataKey="base" stackId="mc" stroke="none" fill="#4f46e5" fillOpacity={0.08} legendType="none" />
+                    <Area type="monotone" dataKey="band" stackId="mc" stroke="none" fill="#4f46e5" fillOpacity={0.18} name="P10–P90 band" />
+                    <Line type="monotone" dataKey="p50" stroke="#4f46e5" strokeWidth={2} dot={false} name="Median (P50)" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+                <div style={{ fontSize: "0.68rem", color: "var(--text-light)", marginTop: 4 }}>
+                  Shaded band = P10–P90 outcome range. Assumes 6% mean / 12% std dev annual nominal return. Results vary each run.
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { fmtCADShort } from '../components/charts';
 import './NetWorth.css';
 
 interface NetWorthSnapshot {
@@ -32,11 +33,12 @@ interface NetWorthBreakdown {
 }
 
 export default function NetWorth() {
-  const { user } = useAuth();
+  useAuth();
   const [current, setCurrent] = useState<NetWorthBreakdown | null>(null);
   const [history, setHistory] = useState<NetWorthSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [months, setMonths] = useState(12);
+  const [projYears, setProjYears] = useState(10);
 
   useEffect(() => {
     fetchNetWorth();
@@ -66,6 +68,17 @@ export default function NetWorth() {
       console.error('Error creating snapshot:', err);
     }
   };
+
+  const scenarios = useMemo(() => {
+    if (!current) return [];
+    const thisYear = new Date().getFullYear();
+    return Array.from({ length: projYears + 1 }, (_, i) => ({
+      year: thisYear + i,
+      conservative: Math.round(current.totalAssets * Math.pow(1.03, i) - current.totalLiabilities * Math.pow(0.95, i)),
+      base: Math.round(current.totalAssets * Math.pow(1.06, i) - current.totalLiabilities * Math.pow(0.95, i)),
+      optimistic: Math.round(current.totalAssets * Math.pow(1.09, i) - current.totalLiabilities * Math.pow(0.95, i)),
+    }));
+  }, [current, projYears]);
 
   if (loading || !current) return <div>Loading net worth data...</div>;
 
@@ -135,12 +148,12 @@ export default function NetWorth() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {assetData.map((entry, index) => (
+                  {assetData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={assetColors[index % assetColors.length]} />
                   ))}
                 </Pie>
@@ -160,12 +173,12 @@ export default function NetWorth() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {liabilityData.map((entry, index) => (
+                  {liabilityData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={liabilityColors[index % liabilityColors.length]} />
                   ))}
                 </Pie>
@@ -221,6 +234,36 @@ export default function NetWorth() {
               />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* 3-Scenario Projection */}
+      {scenarios.length > 1 && (
+        <div className="trends-card">
+          <div className="trends-header">
+            <h3>3-Scenario Net Worth Projection</h3>
+            <select value={projYears} onChange={(e) => setProjYears(parseInt(e.target.value))}>
+              <option value={5}>5 Years</option>
+              <option value={10}>10 Years</option>
+              <option value={20}>20 Years</option>
+              <option value={30}>30 Years</option>
+            </select>
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={scenarios}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="year" />
+              <YAxis tickFormatter={(v) => fmtCADShort(v)} />
+              <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString()}`} />
+              <Legend />
+              <Line type="monotone" dataKey="optimistic" stroke="#10B981" strokeWidth={2} name="Optimistic (9%)" dot={false} />
+              <Line type="monotone" dataKey="base" stroke="#4F46E5" strokeWidth={2} name="Base (6%)" dot={false} />
+              <Line type="monotone" dataKey="conservative" stroke="#F59E0B" strokeWidth={2} name="Conservative (3%)" dot={false} strokeDasharray="5 5" />
+            </LineChart>
+          </ResponsiveContainer>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-light)", marginTop: 8 }}>
+            Assets grow at each scenario rate; liabilities amortize ~5%/yr. For planning purposes only.
+          </p>
         </div>
       )}
 

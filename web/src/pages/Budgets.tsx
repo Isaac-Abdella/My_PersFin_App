@@ -788,6 +788,54 @@ export default function Budgets() {
         </div>
       )}
 
+      {summary && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginTop: 0 }}>Budget Pace Predictor</h3>
+          {(() => {
+            const start = new Date(summary.periodStart).getTime();
+            const end = new Date(summary.periodEnd).getTime();
+            const now = Date.now();
+            const elapsed = Math.min(1, Math.max(0, (now - start) / (end - start)));
+            const nonIncome = summary.majorSummaries.filter(m => m.majorCategoryKey !== "income");
+            const totalBudget = nonIncome.reduce((s, m) => s + m.totalEffectiveBudget, 0);
+            const totalSpent = nonIncome.reduce((s, m) => s + m.totalSpent, 0);
+            const spentRatio = totalBudget > 0 ? totalSpent / totalBudget : 0;
+            const paceRatio = elapsed > 0 ? spentRatio / elapsed : 1;
+            const projectedEnd = elapsed > 0 ? totalSpent / elapsed : totalSpent;
+            const overUnder = projectedEnd - totalBudget;
+            const daysLeft = Math.ceil(Math.max(0, end - now) / 86400000);
+            const paceOk = paceRatio <= 1.05;
+            return (
+              <div>
+                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+                  {[
+                    { label: "Period Elapsed", value: `${(elapsed * 100).toFixed(0)}%`, sub: `${daysLeft} days left`, color: "#3B82F6" },
+                    { label: "Budget Used", value: `${(spentRatio * 100).toFixed(0)}%`, sub: `$${totalSpent.toFixed(0)} of $${totalBudget.toFixed(0)}`, color: paceOk ? "#059669" : "#dc2626" },
+                    { label: "Spend Pace", value: `${(paceRatio * 100).toFixed(0)}%`, sub: paceOk ? "On track" : "Running over", color: paceOk ? "#059669" : "#dc2626" },
+                    { label: "Projected End-of-Period", value: `$${projectedEnd.toFixed(0)}`, sub: overUnder > 0 ? `$${overUnder.toFixed(0)} over budget` : `$${Math.abs(overUnder).toFixed(0)} under budget`, color: overUnder > 0 ? "#dc2626" : "#059669" },
+                  ].map(c => (
+                    <div key={c.label} style={{ flex: 1, minWidth: 140, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.6rem 0.9rem" }}>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-light)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{c.label}</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 700, color: c.color }}>{c.value}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-light)" }}>{c.sub}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-light)", marginBottom: "0.25rem" }}>Period progress vs. budget used</div>
+                <div style={{ position: "relative", height: 16, borderRadius: 999, background: "var(--border)", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, width: `${Math.min(elapsed * 100, 100)}%`, background: "#3B82F6", opacity: 0.3 }} />
+                  <div style={{ position: "absolute", inset: 0, width: `${Math.min(spentRatio * 100, 100)}%`, background: paceOk ? "#059669" : "#dc2626", opacity: 0.75 }} />
+                </div>
+                <div style={{ display: "flex", gap: "1.25rem", fontSize: "0.7rem", marginTop: "0.35rem" }}>
+                  <span style={{ color: "#3B82F6" }}>■ Period elapsed</span>
+                  <span style={{ color: paceOk ? "#059669" : "#dc2626" }}>■ Budget used</span>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Payday Auto-Allocation Planner</h3>
         <p>Split each paycheck into savings, debt, and your active envelopes.</p>
