@@ -2,6 +2,7 @@
 import { api } from "../api";
 import type { Budget, CategoryMajor } from "../types";
 import { CATEGORY_CATALOG } from "../data/categoryCatalog";
+import { DonutChart } from "../components/charts";
 
 type BudgetCycle = "biweekly" | "monthly";
 type RolloverMode = "none" | "carry-unused" | "carry-net";
@@ -673,6 +674,18 @@ export default function Budgets() {
             </p>
             <small>{cycle === "biweekly" ? "This pay cycle" : "This month"}</small>
           </div>
+        </div>
+      )}
+
+      {summary && summary.majorSummaries.some(m => m.majorCategoryKey !== "income" && m.totalSpent > 0) && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginTop: 0 }}>Spending by Category</h3>
+          <DonutChart
+            data={summary.majorSummaries
+              .filter(m => m.majorCategoryKey !== "income" && m.totalSpent > 0)
+              .map(m => ({ name: m.majorCategoryName, value: m.totalSpent }))}
+            height={220}
+          />
         </div>
       )}
 

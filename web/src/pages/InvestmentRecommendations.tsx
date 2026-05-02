@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { api } from "../api";
 import "./InvestmentRecommendations.css";
+import { DonutChart, TrendAreaChart } from "../components/charts";
 
 interface ETF {
   symbol: string;
@@ -164,32 +165,47 @@ export default function InvestmentRecommendations(): ReactElement {
           <div className="investment-section">
             <h2>Recommended Asset Allocation</h2>
             {allocation && (
-              <div className="allocation-grid">
-                <div className="allocation-item">
-                  <div className="allocation-bar equities" style={{ width: `${allocation.equities}%` }}></div>
-                  <span className="label">Equities</span>
-                  <span className="value">{allocation.equities}%</span>
-                  <small>Growth assets for long-term returns</small>
+              <>
+                <div className="allocation-grid">
+                  <div className="allocation-item">
+                    <div className="allocation-bar equities" style={{ width: `${allocation.equities}%` }}></div>
+                    <span className="label">Equities</span>
+                    <span className="value">{allocation.equities}%</span>
+                    <small>Growth assets for long-term returns</small>
+                  </div>
+                  <div className="allocation-item">
+                    <div className="allocation-bar fixed-income" style={{ width: `${allocation.fixedIncome}%` }}></div>
+                    <span className="label">Fixed Income</span>
+                    <span className="value">{allocation.fixedIncome}%</span>
+                    <small>Bonds for stability</small>
+                  </div>
+                  <div className="allocation-item">
+                    <div className="allocation-bar alternatives" style={{ width: `${allocation.alternatives}%` }}></div>
+                    <span className="label">Alternatives</span>
+                    <span className="value">{allocation.alternatives}%</span>
+                    <small>REITs and diversification</small>
+                  </div>
+                  <div className="allocation-item">
+                    <div className="allocation-bar cash" style={{ width: `${allocation.cash}%` }}></div>
+                    <span className="label">Cash</span>
+                    <span className="value">{allocation.cash}%</span>
+                    <small>Emergency liquidity</small>
+                  </div>
                 </div>
-                <div className="allocation-item">
-                  <div className="allocation-bar fixed-income" style={{ width: `${allocation.fixedIncome}%` }}></div>
-                  <span className="label">Fixed Income</span>
-                  <span className="value">{allocation.fixedIncome}%</span>
-                  <small>Bonds for stability</small>
+                <div style={{ marginTop: "1.5rem" }}>
+                  <DonutChart
+                    data={[
+                      { name: "Equities",     value: allocation.equities,     color: "#10B981" },
+                      { name: "Fixed Income", value: allocation.fixedIncome,  color: "#3B82F6" },
+                      { name: "Alternatives", value: allocation.alternatives, color: "#F59E0B" },
+                      { name: "Cash",         value: allocation.cash,         color: "#9CA3AF" },
+                    ]}
+                    height={200}
+                    formatValue={(v) => `${v}%`}
+                    centerLabel={riskProfile.toUpperCase()}
+                  />
                 </div>
-                <div className="allocation-item">
-                  <div className="allocation-bar alternatives" style={{ width: `${allocation.alternatives}%` }}></div>
-                  <span className="label">Alternatives</span>
-                  <span className="value">{allocation.alternatives}%</span>
-                  <small>REITs and diversification</small>
-                </div>
-                <div className="allocation-item">
-                  <div className="allocation-bar cash" style={{ width: `${allocation.cash}%` }}></div>
-                  <span className="label">Cash</span>
-                  <span className="value">{allocation.cash}%</span>
-                  <small>Emergency liquidity</small>
-                </div>
-              </div>
+              </>
             )}
           </div>
 
@@ -219,32 +235,48 @@ export default function InvestmentRecommendations(): ReactElement {
           <div className="investment-section">
             <h2>Projected Portfolio Growth</h2>
             {projections.length > 0 && (
-              <div className="projection-chart">
-                <div className="chart-container">
-                  <table className="projection-table">
-                    <thead>
-                      <tr>
-                        <th>Year</th>
-                        <th>Age</th>
-                        <th>Balance</th>
-                        <th>Contributions</th>
-                        <th>Investment Gains</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projections.slice(0, 10).map((p) => (
-                        <tr key={p.year}>
-                          <td>{p.year}</td>
-                          <td>{p.age}</td>
-                          <td>${p.balance.toLocaleString()}</td>
-                          <td>${p.contributions.toLocaleString()}</td>
-                          <td>${p.investmentGains.toLocaleString()}</td>
+              <>
+                <TrendAreaChart
+                  data={projections.map(p => ({
+                    year: String(p.year),
+                    balance: p.balance,
+                    contributions: p.contributions,
+                  }))}
+                  xKey="year"
+                  series={[
+                    { key: "balance",       label: "Portfolio Balance",   color: "#6366F1" },
+                    { key: "contributions", label: "Total Contributions",  color: "#10B981", dashed: true },
+                  ]}
+                  formatX={(v) => v}
+                  height={240}
+                />
+                <div className="projection-chart" style={{ marginTop: "1rem" }}>
+                  <div className="chart-container">
+                    <table className="projection-table">
+                      <thead>
+                        <tr>
+                          <th>Year</th>
+                          <th>Age</th>
+                          <th>Balance</th>
+                          <th>Contributions</th>
+                          <th>Investment Gains</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {projections.slice(0, 10).map((p) => (
+                          <tr key={p.year}>
+                            <td>{p.year}</td>
+                            <td>{p.age}</td>
+                            <td>${p.balance.toLocaleString()}</td>
+                            <td>${p.contributions.toLocaleString()}</td>
+                            <td>${p.investmentGains.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 

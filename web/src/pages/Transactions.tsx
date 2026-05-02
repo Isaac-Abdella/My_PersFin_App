@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { api } from "../api";
 import type { Transaction, Account, CategoryMajor } from "../types";
 import { CATEGORY_CATALOG } from "../data/categoryCatalog";
+import { TrendAreaChart } from "../components/charts";
 
 const ITEMS_PER_PAGE = 100;
 const ALL_ACCOUNTS = "__all_accounts__";
@@ -40,6 +41,7 @@ export default function Transactions() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<CategoryMajor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cashFlow, setCashFlow] = useState<{ month: string; income: number; expenses: number; net: number }[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState<"page" | "filtered">("page");
@@ -85,6 +87,7 @@ export default function Transactions() {
       const [txns, accts] = await Promise.all([api("/transactions"), api("/accounts")]);
       setTransactions(txns);
       setAccounts(accts);
+      api("/analytics/cash-flow-history?months=12").then(setCashFlow).catch(() => {});
       try {
         const categoriesData = await api("/categories/tree");
         const resolvedCategories = Array.isArray(categoriesData?.majorCategories)
@@ -716,6 +719,22 @@ export default function Transactions() {
           {duplicateGroups.length === 0 && selectedAccount && (
             <p style={{ marginTop: "1rem", color: "#666" }}>No duplicates found for this account!</p>
           )}
+        </div>
+      )}
+
+      {cashFlow.length > 0 && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ margin: "0 0 0.75rem 0" }}>12-Month Cash Flow</h3>
+          <TrendAreaChart
+            data={cashFlow}
+            xKey="month"
+            series={[
+              { key: "income",   label: "Income",   color: "#10B981" },
+              { key: "expenses", label: "Expenses",  color: "#EF4444" },
+              { key: "net",      label: "Net",       color: "#6366F1", dashed: true },
+            ]}
+            height={200}
+          />
         </div>
       )}
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
 import './Goals.css';
+import { ProgressGauge, GaugeRow } from '../components/charts';
 
 interface Goal {
   _id: string;
@@ -264,6 +265,24 @@ export default function Goals() {
             {editingId ? 'Update Goal' : 'Create Goal'}
           </button>
         </form>
+      )}
+
+      {goals.length > 0 && (
+        <div style={{ background: "#fff", borderRadius: "0.75rem", padding: "1rem 1rem 0.5rem", marginBottom: "1rem", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+          <h3 style={{ marginTop: 0, marginBottom: "0.75rem", fontSize: "1rem", color: "#374151" }}>Progress Overview</h3>
+          <GaugeRow>
+            {goals.slice(0, 8).map(goal => (
+              <ProgressGauge
+                key={goal._id}
+                value={Math.min(goal.progressPercentage, 100)}
+                label={goal.name}
+                sublabel={`$${goal.currentAmount.toFixed(0)} / $${goal.targetAmount.toFixed(0)}`}
+                warnAt={50}
+                dangerAt={80}
+              />
+            ))}
+          </GaugeRow>
+        </div>
       )}
 
       <div className="goals-grid">

@@ -1,82 +1,85 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
-import type { FinancialOverview, SpendingByCategory, BudgetComparison, Account } from "../types";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import type { Account } from "../types";
+import {
+  TrendAreaChart,
+  DonutChart,
+  ComparisonBarChart,
+  ProgressGauge,
+  GaugeRow,
+  MiniSparkline,
+  fmtCAD,
+  COLORS as C,
+} from "../components/charts";
 
-// Custom label renderer to position all labels on the right side
-const renderCustomLabel = (entry: any) => {
-  const { cx, cy, midAngle, innerRadius, outerRadius, category, amount } = entry;
-  const RADIAN = Math.PI / 180;
-  const radius = outerRadius + 60;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      fill={CATEGORY_COLORS[category] || '#333'} 
-      textAnchor={x > cx ? 'start' : 'start'} 
-      dominantBaseline="central"
-      fontSize="12"
-      fontWeight="500"
-    >
-      {`${category}: $${amount.toFixed(0)}`}
-    </text>
-  );
+interface FinancialSnapshot {
+  netWorth: number;
+  totalAssets: number;
+  totalLiabilities: number;
+  totalDebt: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlyCashFlow: number;
+  savingsRate: number;
+  debtRatio: number;
+  emergencyFundMonths: number;
+  netWorthTrend: number;
+  activeGoals: number;
+  goalsProgress: number;
+}
+
+interface CashFlowMonth { month: string; income: number; expenses: number; net: number; }
+interface AllocSlice    { name: string; value: number; color: string; }
+interface SpendItem     { category: string; amount: number; }
+interface BudgetRow     { category: string; budgeted: number; spent: number; isOverBudget: boolean; percentUsed: number; }
+
+const ACCOUNT_TYPE_LABELS: Record<string, string> = {
+  chequing: "Chequing", checking: "Checking", savings: "Savings",
+  "credit-card": "Credit Card", "line-of-credit": "LOC",
+  tfsa: "TFSA", rrsp: "RRSP", gic: "GIC",
+  "student-loan": "Student Loan", mortgage: "Mortgage",
+  "auto-loan": "Auto Loan", "personal-loan": "Personal Loan",
+  investment: "Investment", other: "Other",
 };
 
-// Category color mapping - consistent colors for each category
-const CATEGORY_COLORS: { [key: string]: string } = {
-  'Groceries': '#FF6B6B',
-  'Transport': '#4ECDC4',
-  'Entertainment': '#FFE66D',
-  'Utilities': '#95E1D3',
-  'Dining': '#F38181',
-  'Shopping': '#AA96DA',
-  'Healthcare': '#FCBAD3',
-  'Insurance': '#A8D8EA',
-  'Rent': '#FF8A80',
-  'Salary': '#81C784',
-  'Bonus': '#FFD54F',
-  'Interest': '#64B5F6',
-  'Other': '#B0BEC5'
-};
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+const LIABILITY_TYPES = new Set([
+  "credit-card", "line-of-credit", "student-loan",
+  "mortgage", "auto-loan", "personal-loan",
+]);
 
 export default function Dashboard() {
-  const [overview, setOverview] = useState<FinancialOverview | null>(null);
-  const [spending, setSpending] = useState<SpendingByCategory[]>([]);
-  const [budgetComparison, setBudgetComparison] = useState<BudgetComparison[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [accounts,         setAccounts]         = useState<Account[]>([]);
+  const [snapshot,         setSnapshot]         = useState<FinancialSnapshot | null>(null);
+  const [cashFlow,         setCashFlow]         = useState<CashFlowMonth[]>([]);
+  const [allocation,       setAllocation]       = useState<AllocSlice[]>([]);
+  const [spending,         setSpending]         = useState<SpendItem[]>([]);
+  const [budgetComparison, setBudgetComparison] = useState<BudgetRow[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [showAccountForm,  setShowAccountForm]  = useState(false);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
-  const [newAccount, setNewAccount] = useState({
-    name: "",
-    type: "chequing" as const,
-    balance: "0",
-    currency: "CAD"
+  const [newAccount,       setNewAccount]       = useState({
+    name: "", type: "chequing" as const, balance: "0", currency: "CAD",
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      // Recalculate and load per-account balances first
-      const accountsData = await api("/accounts");
-      const [overviewData, spendingData, budgetData] = await Promise.all([
-        api("/analytics/overview"),
-        api("/analytics/spending-by-category"),
-        api("/analytics/budget-comparison")
-      ]);
-      setOverview(overviewData);
-      setSpending(spendingData.categories.slice(0, 6)); // Top 6 categories
-      setBudgetComparison(budgetData);
+      const [accountsData, snapshotData, cashFlowData, allocData, spendData, budgetData] =
+        await Promise.all([
+          api("/accounts"),
+          api("/analytics/financial-snapshot").catch(() => null),
+          api("/analytics/cash-flow-history?months=12").catch(() => []),
+          api("/analytics/investment-allocation").catch(() => []),
+          api("/analytics/spending-by-category").catch(() => ({ categories: [] })),
+          api("/analytics/budget-comparison").catch(() => []),
+        ]);
       setAccounts(accountsData);
+      if (snapshotData) setSnapshot(snapshotData);
+      setCashFlow(cashFlowData ?? []);
+      setAllocation(allocData ?? []);
+      setSpending((spendData?.categories ?? []).slice(0, 8));
+      setBudgetComparison(budgetData ?? []);
     } catch (err) {
       console.error("Failed to load dashboard data", err);
     } finally {
@@ -86,41 +89,29 @@ export default function Dashboard() {
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAccount.name.trim()) {
-      alert("Account name is required");
-      return;
-    }
-
+    if (!newAccount.name.trim()) { alert("Account name is required"); return; }
     try {
       if (editingAccountId) {
-        // Update existing account
         await api(`/accounts/${editingAccountId}`, {
           method: "PUT",
           body: JSON.stringify({
-            name: newAccount.name,
-            type: newAccount.type,
-            balance: parseFloat(newAccount.balance),
-            currency: newAccount.currency
-          })
+            name: newAccount.name, type: newAccount.type,
+            balance: parseFloat(newAccount.balance), currency: newAccount.currency,
+          }),
         });
-        alert("Account updated successfully");
       } else {
-        // Create new account
         await api("/accounts", {
           method: "POST",
           body: JSON.stringify({
-            name: newAccount.name,
-            type: newAccount.type,
-            balance: parseFloat(newAccount.balance),
-            currency: newAccount.currency
-          })
+            name: newAccount.name, type: newAccount.type,
+            balance: parseFloat(newAccount.balance), currency: newAccount.currency,
+          }),
         });
-        alert("Account created successfully");
       }
       setNewAccount({ name: "", type: "chequing", balance: "0", currency: "CAD" });
       setEditingAccountId(null);
       setShowAccountForm(false);
-      loadData(); // Reload dashboard to update overview
+      loadData();
     } catch (err: any) {
       alert(err.message || "Failed to save account");
     }
@@ -129,10 +120,8 @@ export default function Dashboard() {
   const handleEditAccount = (account: Account) => {
     setEditingAccountId(account._id);
     setNewAccount({
-      name: account.name,
-      type: account.type as any,
-      balance: account.balance.toString(),
-      currency: account.currency
+      name: account.name, type: account.type as any,
+      balance: account.balance.toString(), currency: account.currency,
     });
     setShowAccountForm(true);
   };
@@ -141,25 +130,10 @@ export default function Dashboard() {
     if (!confirm("Delete this account? This cannot be undone.")) return;
     try {
       await api(`/accounts/${id}`, { method: "DELETE" });
-      alert("Account deleted successfully");
       loadData();
     } catch (err: any) {
       alert(err.message || "Failed to delete account");
     }
-  };
-
-  const getBalanceLabel = (account: Account): string => {
-    const liabilityTypes = new Set(["credit-card", "line-of-credit", "student-loan", "mortgage", "auto-loan", "personal-loan"]);
-
-    if (liabilityTypes.has(account.type)) {
-      return `Amount Owing: $${Math.abs(account.balance).toFixed(2)}`;
-    }
-
-    if (account.type === "chequing" || account.type === "checking" || account.type === "savings") {
-      return `Available: $${account.balance.toFixed(2)}`;
-    }
-
-    return `$${account.balance.toFixed(2)}`;
   };
 
   const cancelEdit = () => {
@@ -168,44 +142,41 @@ export default function Dashboard() {
     setShowAccountForm(false);
   };
 
+  const getBalanceLabel = (account: Account) =>
+    LIABILITY_TYPES.has(account.type)
+      ? `Owing: ${fmtCAD(Math.abs(account.balance))}`
+      : fmtCAD(account.balance);
+
   if (loading) return <div className="loading">Loading...</div>;
+
+  const netFlowSpark = cashFlow.map(m => m.net);
 
   return (
     <div className="page">
+
+      {/* ── Header ─────────────────────────────────────────────── */}
       <div className="page-header">
         <h1>Dashboard</h1>
-        <button onClick={() => {
-          if (showAccountForm && !editingAccountId) {
-            cancelEdit();
-          } else {
-            setShowAccountForm(!showAccountForm);
-          }
-        }}>
+        <button onClick={() =>
+          showAccountForm && !editingAccountId ? cancelEdit() : setShowAccountForm(!showAccountForm)
+        }>
           {showAccountForm ? "Cancel" : "Add Account"}
         </button>
       </div>
 
+      {/* ── Account Form ───────────────────────────────────────── */}
       {showAccountForm && (
         <div className="card form-card">
           <h3>{editingAccountId ? "Edit Account" : "Create New Account"}</h3>
           <form onSubmit={handleCreateAccount} className="form">
             <label>
               Account Name:
-              <input
-                type="text"
-                placeholder="e.g., My Chequing Account"
-                value={newAccount.name}
-                onChange={e => setNewAccount({...newAccount, name: e.target.value})}
-                required
-              />
+              <input type="text" placeholder="e.g., My Chequing Account" value={newAccount.name}
+                onChange={e => setNewAccount({ ...newAccount, name: e.target.value })} required />
             </label>
-
             <label>
               Account Type:
-              <select
-                value={newAccount.type}
-                onChange={e => setNewAccount({...newAccount, type: e.target.value as any})}
-              >
+              <select value={newAccount.type} onChange={e => setNewAccount({ ...newAccount, type: e.target.value as any })}>
                 <optgroup label="Savings & Chequing">
                   <option value="chequing">Chequing</option>
                   <option value="savings">Savings</option>
@@ -231,243 +202,243 @@ export default function Dashboard() {
                 </optgroup>
               </select>
             </label>
-
             <label>
               Initial Balance:
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={newAccount.balance}
-                onChange={e => setNewAccount({...newAccount, balance: e.target.value})}
-              />
+              <input type="number" step="0.01" placeholder="0.00" value={newAccount.balance}
+                onChange={e => setNewAccount({ ...newAccount, balance: e.target.value })} />
             </label>
-
             <label>
               Currency:
-              <select
-                value={newAccount.currency}
-                onChange={e => setNewAccount({...newAccount, currency: e.target.value})}
-              >
+              <select value={newAccount.currency} onChange={e => setNewAccount({ ...newAccount, currency: e.target.value })}>
                 <option value="CAD">CAD</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
               </select>
             </label>
-
             <div className="form-actions">
               <button type="submit">{editingAccountId ? "Update Account" : "Create Account"}</button>
               {editingAccountId && (
-                <button type="button" onClick={cancelEdit} className="btn-secondary">
-                  Cancel Edit
-                </button>
+                <button type="button" onClick={cancelEdit} className="btn-secondary">Cancel Edit</button>
               )}
             </div>
           </form>
         </div>
       )}
 
-      {/* Accounts List */}
-      <div className="card-grid" style={{ gridColumn: "1 / -1" }}>
-        <div className="card">
-          <h3>My Accounts</h3>
-          {accounts.length > 0 ? (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                marginTop: "1rem"
-              }}>
-                <thead>
-                  <tr style={{
-                    borderBottom: "2px solid #e0e0e0",
-                    textAlign: "left"
-                  }}>
-                    <th style={{ padding: "0.75rem", fontWeight: "600" }}>Account Name</th>
-                    <th style={{ padding: "0.75rem", fontWeight: "600" }}>Type</th>
-                    <th style={{ padding: "0.75rem", fontWeight: "600", textAlign: "right" }}>Balance</th>
-                    <th style={{ padding: "0.75rem", fontWeight: "600" }}>Currency</th>
-                    <th style={{ padding: "0.75rem", fontWeight: "600", textAlign: "center" }}>Actions</th>
+      {/* ── Accounts Table ─────────────────────────────────────── */}
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <h3 style={{ marginTop: 0 }}>My Accounts</h3>
+        {accounts.length > 0 ? (
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Type</th>
+                  <th style={{ textAlign: "right" }}>Balance</th>
+                  <th>Currency</th>
+                  <th style={{ textAlign: "center" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.map(account => (
+                  <tr key={account._id}>
+                    <td style={{ fontWeight: 500 }}>{account.name}</td>
+                    <td>{ACCOUNT_TYPE_LABELS[account.type] ?? account.type}</td>
+                    <td style={{ textAlign: "right" }}>{getBalanceLabel(account)}</td>
+                    <td>{account.currency}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <button onClick={() => handleEditAccount(account)}
+                        className="btn-primary btn-sm" style={{ marginRight: "0.4rem" }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleDeleteAccount(account._id!)} className="btn-danger btn-sm">
+                        Delete
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {accounts.map((account) => (
-                    <tr key={account._id} style={{
-                      borderBottom: "1px solid #f0f0f0"
-                    }}>
-                      <td style={{ padding: "0.75rem" }}>{account.name}</td>
-                      <td style={{ padding: "0.75rem" }}>
-                        {(() => {
-                          const typeLabels: {[key: string]: string} = {
-                            "chequing": "Chequing",
-                            "checking": "Checking",
-                            "savings": "Savings",
-                            "credit-card": "Credit Card",
-                            "tfsa": "TFSA",
-                            "rrsp": "RRSP",
-                            "gic": "GIC",
-                            "line-of-credit": "LOC",
-                            "student-loan": "Student Loan",
-                            "mortgage": "Mortgage",
-                            "auto-loan": "Auto Loan",
-                            "personal-loan": "Personal Loan",
-                            "investment": "Investment",
-                            "other": "Other"
-                          };
-                          return typeLabels[account.type] || account.type;
-                        })()}
-                      </td>
-                      <td style={{ padding: "0.75rem", textAlign: "right", fontWeight: "500" }}>
-                        {getBalanceLabel(account)}
-                      </td>
-                      <td style={{ padding: "0.75rem" }}>{account.currency}</td>
-                      <td style={{ padding: "0.75rem", textAlign: "center" }}>
-                        <button
-                          onClick={() => handleEditAccount(account)}
-                          className="btn-primary"
-                          style={{ marginRight: "0.5rem" }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAccount(account._id!)}
-                          className="btn-danger"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p style={{ color: "#999", marginTop: "1rem" }}>No accounts yet. Create one above!</p>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p style={{ color: "#9CA3AF", margin: "0.5rem 0 0" }}>
+            No accounts yet. Create one above!
+          </p>
+        )}
       </div>
 
-      {overview && (
-        <div className="card-grid">
+      {/* ── Hero KPI Cards ─────────────────────────────────────── */}
+      {snapshot && (
+        <div className="card-grid" style={{ marginBottom: "1rem" }}>
+
           <div className="card">
-            <h3>Net Worth</h3>
-            <p className="amount">${overview.netWorth.toFixed(2)}</p>
-            <small>Assets - Debts</small>
+            <h3 style={{ marginTop: 0, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#6B7280" }}>Net Worth</h3>
+            <p className={`amount ${snapshot.netWorth >= 0 ? "positive" : "negative"}`}
+               style={{ margin: "0.2rem 0 0.25rem", fontSize: "1.6rem" }}>
+              {fmtCAD(snapshot.netWorth)}
+            </p>
+            <small style={{ color: snapshot.netWorthTrend >= 0 ? "#10B981" : "#EF4444" }}>
+              {snapshot.netWorthTrend >= 0 ? "▲" : "▼"} {fmtCAD(Math.abs(snapshot.netWorthTrend))} vs last month
+            </small>
           </div>
-          <div className="card">
-            <h3>Total Balance</h3>
-            <p className="amount">${overview.totalBalance.toFixed(2)}</p>
-            <small>{overview.accountsCount} accounts</small>
+
+          <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h3 style={{ marginTop: 0, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#6B7280" }}>Monthly Cash Flow</h3>
+              <p className={`amount ${snapshot.monthlyCashFlow >= 0 ? "positive" : "negative"}`}
+                 style={{ margin: "0.2rem 0 0.25rem", fontSize: "1.6rem" }}>
+                {fmtCAD(snapshot.monthlyCashFlow)}
+              </p>
+              <small style={{ color: "#6B7280" }}>
+                {fmtCAD(snapshot.monthlyIncome)} in · {fmtCAD(snapshot.monthlyExpenses)} out
+              </small>
+            </div>
+            {netFlowSpark.length >= 2 && (
+              <MiniSparkline
+                data={netFlowSpark}
+                color={snapshot.monthlyCashFlow >= 0 ? C.income : C.expense}
+                width={80}
+                height={40}
+              />
+            )}
           </div>
+
           <div className="card">
-            <h3>Total Debt</h3>
-            <p className="amount negative">${overview.totalDebt.toFixed(2)}</p>
-            <small>{overview.debtsCount} debts</small>
+            <h3 style={{ marginTop: 0, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#6B7280" }}>Savings Rate</h3>
+            <p className="amount" style={{ margin: "0.2rem 0 0.25rem", fontSize: "1.6rem" }}>
+              {snapshot.savingsRate.toFixed(1)}%
+            </p>
+            <small style={{
+              color: snapshot.savingsRate >= 20 ? "#10B981"
+                   : snapshot.savingsRate >= 10 ? "#F59E0B"
+                   : "#EF4444",
+            }}>
+              {snapshot.savingsRate >= 20 ? "On track" : snapshot.savingsRate >= 10 ? "Below target" : "Needs attention"} · target 20%+
+            </small>
           </div>
+
           <div className="card">
-            <h3>Monthly Savings</h3>
-            <p className="amount">${overview.monthlySavings.toFixed(2)}</p>
-            <small>{overview.savingsRate}% savings rate</small>
+            <h3 style={{ marginTop: 0, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#6B7280" }}>Total Debt</h3>
+            <p className="amount negative" style={{ margin: "0.2rem 0 0.25rem", fontSize: "1.6rem" }}>
+              {fmtCAD(snapshot.totalDebt)}
+            </p>
+            <small style={{
+              color: snapshot.debtRatio <= 30 ? "#10B981"
+                   : snapshot.debtRatio <= 50 ? "#F59E0B"
+                   : "#EF4444",
+            }}>
+              Debt-to-assets: {snapshot.debtRatio.toFixed(1)}%
+            </small>
           </div>
         </div>
       )}
 
-      <div className="dashboard-row">
-        <div className="card chart-card">
-          <h3>Spending by Category</h3>
-          {spending.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={500}>
-                <PieChart>
-                  <Pie
-                    data={spending}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    label={renderCustomLabel}
-                    outerRadius={120}
-                    fill="#8884d8"
-                    dataKey="amount"
-                  >
-                    {spending.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={CATEGORY_COLORS[entry.category] || COLORS[index % COLORS.length]} 
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Custom Legend with Category Colors */}
-              <div className="category-legend" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                gap: '0.75rem',
-                marginTop: '1rem',
-                padding: '1rem',
-                backgroundColor: '#f9f9f9',
-                borderRadius: '4px'
-              }}>
-                {spending.map((entry, index) => (
-                  <div key={entry.category} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                    <div style={{
-                      width: '12px',
-                      height: '12px',
-                      backgroundColor: CATEGORY_COLORS[entry.category] || COLORS[index % COLORS.length],
-                      borderRadius: '2px'
-                    }} />
-                    <span style={{ fontSize: '0.9rem' }}>
-                      {entry.category}: <strong>${entry.amount.toFixed(2)}</strong>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p>No spending data available</p>
-          )}
+      {/* ── 12-Month Cash Flow ─────────────────────────────────── */}
+      {cashFlow.length > 0 && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginTop: 0 }}>12-Month Cash Flow</h3>
+          <TrendAreaChart
+            data={cashFlow}
+            xKey="month"
+            series={[
+              { key: "income",   label: "Income",   color: C.income  },
+              { key: "expenses", label: "Expenses",  color: C.expense },
+              { key: "net",      label: "Net",       color: C.net, dashed: true },
+            ]}
+            height={240}
+          />
         </div>
+      )}
 
-        <div className="card chart-card">
-          <h3>Budget vs Actual</h3>
-          {budgetComparison.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={budgetComparison}>
-                <XAxis dataKey="category" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-                <Legend />
-                <Bar dataKey="budgeted" fill="#8884d8" name="Budget" />
-                <Bar dataKey="spent" fill="#82ca9d" name="Spent" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p>No budget data available</p>
-          )}
+      {/* ── Spending + Allocation ──────────────────────────────── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Spending by Category</h3>
+          <DonutChart
+            data={spending.map(s => ({ name: s.category, value: s.amount }))}
+            height={280}
+            showLabels
+          />
+        </div>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Investment Allocation</h3>
+          <DonutChart
+            data={allocation}
+            height={280}
+            centerLabel="Invested"
+          />
         </div>
       </div>
 
+      {/* ── Budget vs Actual ───────────────────────────────────── */}
+      {budgetComparison.length > 0 && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginTop: 0 }}>Budget vs Actual</h3>
+          <ComparisonBarChart
+            data={budgetComparison}
+            xKey="category"
+            bars={[
+              { key: "budgeted", label: "Budget", color: C.net     },
+              { key: "spent",    label: "Spent",  color: C.expense },
+            ]}
+            layout="vertical"
+            height={Math.max(200, budgetComparison.length * 38)}
+            showLegend
+          />
+        </div>
+      )}
+
+      {/* ── Financial Health Gauges ────────────────────────────── */}
+      {snapshot && (
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <h3 style={{ marginTop: 0 }}>Financial Health</h3>
+          <GaugeRow>
+            <ProgressGauge
+              value={Math.min(snapshot.savingsRate, 100)}
+              label="Savings Rate"
+              sublabel="Target: 20%+"
+              warnAt={10}
+              dangerAt={20}
+            />
+            <ProgressGauge
+              value={Math.min(snapshot.debtRatio, 100)}
+              label="Debt Ratio"
+              sublabel="Lower is better"
+              warnAt={30}
+              dangerAt={50}
+              invertScale
+            />
+            <ProgressGauge
+              value={Math.min((snapshot.emergencyFundMonths / 6) * 100, 100)}
+              label="Emergency Fund"
+              sublabel={`${snapshot.emergencyFundMonths.toFixed(1)} / 6 months`}
+              warnAt={50}
+              dangerAt={80}
+            />
+            <ProgressGauge
+              value={Math.min(snapshot.goalsProgress, 100)}
+              label="Goals Progress"
+              sublabel={`${snapshot.activeGoals} active goal${snapshot.activeGoals !== 1 ? "s" : ""}`}
+              warnAt={30}
+              dangerAt={60}
+            />
+          </GaugeRow>
+        </div>
+      )}
+
+      {/* ── Budget Alerts ──────────────────────────────────────── */}
       {budgetComparison.some(b => b.isOverBudget) && (
         <div className="alert-card">
           <h3>⚠️ Budget Alerts</h3>
           {budgetComparison.filter(b => b.isOverBudget).map(budget => (
             <div key={budget.category} className="alert-item">
-              <strong>{budget.category}</strong>: Over budget by ${(budget.spent - budget.budgeted).toFixed(2)} ({budget.percentUsed}%)
+              <strong>{budget.category}</strong>: Over budget by {fmtCAD(budget.spent - budget.budgeted)} ({budget.percentUsed}%)
             </div>
           ))}
         </div>
       )}
+
     </div>
   );
 }
-
-
-
-
-
-

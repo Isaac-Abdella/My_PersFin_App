@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import "./TaxPlanning.css";
+import { WaterfallChart } from "../components/charts";
 
 const PROVINCES = [
   { code: "AB", name: "Alberta" },
@@ -242,6 +243,14 @@ export function TaxPlanning() {
                   <p className="amount">${rrspRoom.remainingRoom.toLocaleString()}</p>
                 </div>
               </div>
+              <WaterfallChart
+                data={[
+                  { name: "Lifetime Room", value: rrspRoom.rrspLifetimeRoom,  type: "total", color: "#3B82F6" },
+                  { name: "Contributed",   value: -rrspRoom.rrspContributions },
+                  { name: "Remaining",     value: rrspRoom.remainingRoom,     type: "total", color: "#10B981" },
+                ]}
+                height={180}
+              />
               <div className="recommendation">
                 <p>💡 {rrspRoom.recommendation}</p>
               </div>
@@ -265,6 +274,14 @@ export function TaxPlanning() {
                   <p className="amount">${tfsaRoom.remainingRoom.toLocaleString()}</p>
                 </div>
               </div>
+              <WaterfallChart
+                data={[
+                  { name: "Lifetime Room", value: tfsaRoom.tfsaLifetimeRoom,  type: "total", color: "#3B82F6" },
+                  { name: "Contributed",   value: -tfsaRoom.tfsaContributions },
+                  { name: "Remaining",     value: tfsaRoom.remainingRoom,     type: "total", color: "#34D399" },
+                ]}
+                height={180}
+              />
               <div className="recommendation">
                 <p>💡 {tfsaRoom.recommendation}</p>
               </div>

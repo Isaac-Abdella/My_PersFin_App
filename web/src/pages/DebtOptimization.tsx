@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { api } from "../api";
 import "./DebtOptimization.css";
+import { DonutChart } from "../components/charts";
 
 interface Debt {
   _id: string;
@@ -287,6 +288,18 @@ export default function DebtOptimization(): ReactElement {
           )}
         </div>
       </div>
+
+      {debts.length > 0 && (
+        <div className="debt-section">
+          <h2>Debt Breakdown</h2>
+          <DonutChart
+            data={debts.map(d => ({ name: d.name, value: d.currentBalance }))}
+            height={220}
+            centerLabel="Total Debt"
+            centerValue={`$${debts.reduce((s, d) => s + d.currentBalance, 0).toLocaleString("en-CA")}`}
+          />
+        </div>
+      )}
 
       {selectedDebts.length > 0 && (
         <>
