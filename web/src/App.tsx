@@ -37,6 +37,7 @@ import SpendingHeatmap from "./pages/SpendingHeatmap";
 import RecurringTransactions from "./pages/RecurringTransactions";
 import AnnualReview from "./pages/AnnualReview";
 import BankConnections from "./pages/BankConnections";
+import MLInsights from "./pages/MLInsights";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -118,6 +119,12 @@ const NAV_GROUPS = [
       { to: "/reports",          label: "Reports & Export"  },
       { to: "/import",           label: "Import CSV"        },
       { to: "/bank-connections", label: "Bank Connections"  },
+    ],
+  },
+  {
+    label: "AI Insights",
+    items: [
+      { to: "/ml-insights", label: "ML Insights" },
     ],
   },
   {
@@ -275,6 +282,7 @@ function Layout() {
                 <Route path="/spending-heatmap" element={<SpendingHeatmap />} />
                 <Route path="/annual-review" element={<AnnualReview />} />
                 <Route path="/bank-connections" element={<BankConnections />} />
+                <Route path="/ml-insights" element={<MLInsights />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

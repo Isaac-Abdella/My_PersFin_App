@@ -32,6 +32,7 @@ import notificationsRoutes from "./routes/notifications";
 import reportsRoutes from "./routes/reports";
 import recurringRoutes from "./routes/recurring";
 import plaidRoutes from "./routes/plaid";
+import mlRoutes from "./routes/ml";
 import { startScheduler } from "./jobs/scheduler";
 
 const app = express();
@@ -107,6 +108,7 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/recurring", recurringRoutes);
 app.use("/api/plaid", plaidRoutes);
+app.use("/api/ml", mlRoutes);
 
 // Error handler
 app.use((err: any, _req: any, res: any, _next: any) => {
