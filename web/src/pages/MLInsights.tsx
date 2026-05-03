@@ -68,7 +68,7 @@ export default function MLInsights() {
       const cats = Object.keys(data.forecasts);
       if (cats.length) setForecastCat(cats[0]);
     } catch (err: any) {
-      setMlError(err.message?.includes("502") || err.message?.includes("ML service")
+      setMlError(err.status === 502
         ? "Python ML service is not running. Start it with: cd python-ml && uvicorn main:app --port 8000"
         : err.message || "Forecast failed");
     } finally {

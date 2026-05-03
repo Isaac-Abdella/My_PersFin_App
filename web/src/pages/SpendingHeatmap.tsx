@@ -6,6 +6,7 @@ interface Transaction {
   amount: number;
   category: string;
   description: string;
+  type: "income" | "expense" | "transfer";
 }
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -47,13 +48,13 @@ export default function SpendingHeatmap() {
   const dailyMap = useMemo(() => {
     const map: Record<string, { amount: number; txns: Transaction[] }> = {};
     for (const t of transactions) {
-      if (!t.date || t.amount >= 0) continue;
+      if (!t.date || t.type !== "expense") continue;
       const d = new Date(t.date);
       if (d.getFullYear() !== year) continue;
       if (filterCategory !== "all" && t.category !== filterCategory) continue;
       const key = d.toISOString().slice(0, 10);
       if (!map[key]) map[key] = { amount: 0, txns: [] };
-      map[key].amount += Math.abs(t.amount);
+      map[key].amount += t.amount;
       map[key].txns.push(t);
     }
     return map;

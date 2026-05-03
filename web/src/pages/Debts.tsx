@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import type { Debt, PayoffStrategy } from "../types";
 
@@ -14,6 +14,7 @@ type DebtDashboard = {
   };
   upcomingDue: Debt[];
   count: number;
+  liveAccountCount?: number;
 };
 
 type OptimizerResponse = {
@@ -34,11 +35,54 @@ type OptimizerResponse = {
 type WhatIfResponse = {
   baseline: PayoffStrategy & { error?: string; minimumRequiredMonthly?: number };
   scenario: PayoffStrategy & { error?: string; minimumRequiredMonthly?: number };
-  comparison: {
-    monthsSaved: number;
-    interestSaved: number;
-  } | null;
+  comparison: { monthsSaved: number; interestSaved: number } | null;
 };
+
+interface DetectedDebt {
+  accountId: string;
+  name: string;
+  suggestedName: string;
+  description: string;
+  accountType: string;
+  accountTypeLabel: string;
+  debtType: string;
+  balance: number;
+  institution: string | null;
+  defaultInterestRate: number;
+  defaultMinPayment: number;
+  alreadyImported: boolean;
+}
+
+// Per-row editable state for the detection panel
+interface EditState {
+  name: string;
+  type: Debt["type"];
+  interestRate: string;
+  minimumPayment: string;
+  lender: string;
+}
+
+const DEBT_TYPES: Array<{ value: Debt["type"]; label: string }> = [
+  { value: "credit-card",   label: "Credit Card" },
+  { value: "student-loan",  label: "Student Loan" },
+  { value: "mortgage",      label: "Mortgage" },
+  { value: "auto-loan",     label: "Auto Loan" },
+  { value: "personal-loan", label: "Personal Loan" },
+  { value: "other",         label: "Other" },
+];
+
+const TYPE_ICON: Record<string, string> = {
+  "credit-card":   "💳",
+  "line-of-credit":"💳",
+  "mortgage":      "🏠",
+  "auto-loan":     "🚗",
+  "student-loan":  "🎓",
+  "personal-loan": "💰",
+  "other":         "📋",
+};
+
+const CAD = (n: number) =>
+  n.toLocaleString("en-CA", { style: "currency", currency: "CAD", minimumFractionDigits: 2 });
 
 export default function Debts() {
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -62,22 +106,52 @@ export default function Debts() {
     minimumPayment: "",
     lender: "",
     dueDate: "",
-    dueScheduleType: "monthly" as "specific" | "monthly" | "biweekly"
+    dueScheduleType: "monthly" as "specific" | "monthly" | "biweekly",
   });
 
   const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
 
+  // ── Detect & Import state ───────────────────────────────────────────────────
+  const [detecting, setDetecting] = useState(false);
+  const [detected, setDetected] = useState<DetectedDebt[] | null>(null);
+  const [detectError, setDetectError] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [editStates, setEditStates] = useState<Record<string, EditState>>({});
+  const [importingId, setImportingId] = useState<string | null>(null);
+  const [importingAll, setImportingAll] = useState(false);
+
+  // Ref so the visibility-change handler always sees the latest detected state
+  // without needing to be recreated on every render.
+  const detectedRef = useRef<DetectedDebt[] | null>(null);
+  useEffect(() => { detectedRef.current = detected; }, [detected]);
+
+  // On every mount (= every SPA page visit) load data + auto-scan.
   useEffect(() => {
     loadData();
-  }, []);
+    detectAuto();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-scan when the user returns to this browser tab after visiting another.
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadData();
+        detectAuto();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => document.removeEventListener("visibilitychange", handleVisible);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [debtData, dashboardData] = await Promise.all([api("/debts"), api("/debts/dashboard")]);
+      const [debtData, dashboardData] = await Promise.all([
+        api("/debts"),
+        api("/debts/dashboard"),
+      ]);
       setDebts(debtData);
       setDashboard(dashboardData);
-
       if (debtData.length > 0) {
         const totalMin = debtData.reduce((sum: number, d: Debt) => sum + d.minimumPayment, 0);
         setPaymentAmount(Math.max(totalMin * 12 / 26 + 50, 300).toFixed(2));
@@ -89,18 +163,44 @@ export default function Debts() {
     }
   };
 
+  // Background auto-scan: runs silently — no loading spinner, no error banner.
+  // Opens the detect panel only when there are new untracked liability accounts.
+  // Skips the scan if the panel is already open so it doesn't reset in-progress edits.
+  const detectAuto = async () => {
+    if (detectedRef.current !== null) return; // panel already open, don't disturb
+    try {
+      const data: DetectedDebt[] = await api("/debts/detect-from-accounts");
+      const hasNew = data.some((d) => !d.alreadyImported);
+      if (!hasNew) return; // nothing to surface — stay quiet
+      const states: Record<string, EditState> = {};
+      for (const d of data) {
+        states[d.accountId] = {
+          name:           d.suggestedName,
+          type:           d.debtType as Debt["type"],
+          interestRate:   d.defaultInterestRate.toString(),
+          minimumPayment: d.defaultMinPayment.toString(),
+          lender:         d.institution ?? "",
+        };
+      }
+      setDetected(data);
+      setDetectError(null);
+      setDismissed(new Set());
+      setEditStates(states);
+    } catch {
+      // Silent — background failures are not surfaced to the user.
+    }
+  };
+
   const loadPlanner = async () => {
     if (debts.length === 0) return;
     try {
       const amount = Number(paymentAmount);
-      const extra = Number(extraPayment) || 0;
-
+      const extra  = Number(extraPayment) || 0;
       const [strategyData, optimizerData, whatIfData] = await Promise.all([
         api(`/debts/payoff/strategies?paymentAmount=${amount}&cadence=${cadence}&extraPayment=0`),
         api(`/debts/payoff/optimizer?paymentAmount=${amount}&cadence=${cadence}`),
-        api(`/debts/payoff/what-if?paymentAmount=${amount}&cadence=${cadence}&extraPayment=${extra}`)
+        api(`/debts/payoff/what-if?paymentAmount=${amount}&cadence=${cadence}&extraPayment=${extra}`),
       ]);
-
       setStrategies(strategyData);
       setOptimizer(optimizerData);
       setWhatIf(whatIfData);
@@ -109,6 +209,85 @@ export default function Debts() {
     }
   };
 
+  // ── Detect & Import handlers ────────────────────────────────────────────────
+
+  const detect = async () => {
+    setDetecting(true);
+    setDetectError(null);
+    setDetected(null);
+    setDismissed(new Set());
+    try {
+      const data: DetectedDebt[] = await api("/debts/detect-from-accounts");
+      setDetected(data);
+      // Seed per-row edit state from suggested values
+      const states: Record<string, EditState> = {};
+      for (const d of data) {
+        states[d.accountId] = {
+          name:           d.suggestedName,
+          type:           d.debtType as Debt["type"],
+          interestRate:   d.defaultInterestRate.toString(),
+          minimumPayment: d.defaultMinPayment.toString(),
+          lender:         d.institution ?? "",
+        };
+      }
+      setEditStates(states);
+    } catch (err: any) {
+      setDetectError(err.message || "Detection failed");
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  const patchEdit = (accountId: string, patch: Partial<EditState>) => {
+    setEditStates((prev) => ({ ...prev, [accountId]: { ...prev[accountId], ...patch } }));
+  };
+
+  const importOne = async (d: DetectedDebt) => {
+    const s = editStates[d.accountId];
+    if (!s) return;
+    const rate = parseFloat(s.interestRate);
+    const minPay = parseFloat(s.minimumPayment);
+    if (!s.name.trim()) { alert("Debt name is required"); return; }
+    if (!isFinite(rate) || rate < 0)   { alert("Enter a valid interest rate"); return; }
+    if (!isFinite(minPay) || minPay < 0) { alert("Enter a valid minimum payment"); return; }
+
+    setImportingId(d.accountId);
+    try {
+      await api("/debts", {
+        method: "POST",
+        body: JSON.stringify({
+          name:           s.name.trim(),
+          type:           s.type,
+          principal:      d.balance,
+          currentBalance: d.balance,
+          interestRate:   rate,
+          minimumPayment: minPay,
+          lender:         s.lender.trim() || undefined,
+          dueScheduleType: "monthly",
+        }),
+      });
+      setDetected((prev) =>
+        prev ? prev.map((x) => x.accountId === d.accountId ? { ...x, alreadyImported: true } : x) : prev
+      );
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Failed to import");
+    } finally {
+      setImportingId(null);
+    }
+  };
+
+  const importAll = async () => {
+    if (!detected) return;
+    const toImport = detected.filter((d) => !d.alreadyImported && !dismissed.has(d.accountId));
+    if (toImport.length === 0) return;
+    setImportingAll(true);
+    for (const d of toImport) await importOne(d);
+    setImportingAll(false);
+  };
+
+  // ── Manual form handlers ────────────────────────────────────────────────────
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -116,25 +295,18 @@ export default function Debts() {
         method: "POST",
         body: JSON.stringify({
           ...formData,
-          principal: parseFloat(formData.principal),
+          principal:      parseFloat(formData.principal),
           currentBalance: parseFloat(formData.currentBalance),
-          interestRate: parseFloat(formData.interestRate),
+          interestRate:   parseFloat(formData.interestRate),
           minimumPayment: parseFloat(formData.minimumPayment),
-          dueDate: formData.dueDate || undefined,
-          dueScheduleType: formData.dueScheduleType
-        })
+          dueDate:        formData.dueDate || undefined,
+          dueScheduleType: formData.dueScheduleType,
+        }),
       });
       setShowForm(false);
       setFormData({
-        name: "",
-        type: "credit-card",
-        principal: "",
-        currentBalance: "",
-        interestRate: "",
-        minimumPayment: "",
-        lender: "",
-        dueDate: "",
-        dueScheduleType: "monthly"
+        name: "", type: "credit-card", principal: "", currentBalance: "",
+        interestRate: "", minimumPayment: "", lender: "", dueDate: "", dueScheduleType: "monthly",
       });
       await loadData();
     } catch (err: any) {
@@ -154,15 +326,11 @@ export default function Debts() {
 
   const handleMakePayment = async (debtId: string) => {
     const amount = Number(paymentInputs[debtId] || 0);
-    if (!isFinite(amount) || amount <= 0) {
-      alert("Enter a valid payment amount.");
-      return;
-    }
-
+    if (!isFinite(amount) || amount <= 0) { alert("Enter a valid payment amount."); return; }
     try {
       await api(`/debts/${debtId}/payment`, {
         method: "POST",
-        body: JSON.stringify({ amount })
+        body: JSON.stringify({ amount }),
       });
       setPaymentInputs((prev) => ({ ...prev, [debtId]: "" }));
       await loadData();
@@ -173,107 +341,288 @@ export default function Debts() {
 
   const totalDebt = useMemo(() => debts.reduce((sum, d) => sum + d.currentBalance, 0), [debts]);
 
+  const visibleDetected = detected ? detected.filter((d) => !dismissed.has(d.accountId)) : [];
+  const newCount = visibleDetected.filter((d) => !d.alreadyImported).length;
+
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div className="page">
-      <div className="page-header">
+
+      {/* ── Header ── */}
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <h1>Debt Planner</h1>
-        <button onClick={() => setShowForm(!showForm)}>{showForm ? "Cancel" : "Add Debt"}</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={detect}
+            disabled={detecting}
+            style={{ padding: "8px 16px", borderRadius: 7, background: "var(--bg-card)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
+          >
+            {detecting ? "Scanning…" : "🔍 Detect & Import"}
+          </button>
+          <button onClick={() => setShowForm(!showForm)}>
+            {showForm ? "Cancel" : "Add Debt"}
+          </button>
+        </div>
       </div>
 
+      {/* ── Dashboard summary cards ── */}
       {dashboard && (
-        <div className="card-grid" style={{ marginBottom: "1rem" }}>
-          <div className="card">
-            <h3>Total Debt</h3>
-            <p className="amount negative">${dashboard.totals.totalDebt.toFixed(2)}</p>
+        <>
+          <div className="card-grid" style={{ marginBottom: "0.5rem" }}>
+            <div className="card">
+              <h3>Total Debt</h3>
+              <p className="amount negative">{CAD(dashboard.totals.totalDebt)}</p>
+            </div>
+            <div className="card">
+              <h3>Minimums (Monthly)</h3>
+              <p className="amount">{CAD(dashboard.totals.totalMinimumPayment)}</p>
+            </div>
+            <div className="card">
+              <h3>Weighted APR</h3>
+              <p className="amount">{dashboard.totals.weightedInterestRate.toFixed(2)}%</p>
+            </div>
+            <div className="card">
+              <h3>Interest Forecast</h3>
+              <p className="amount negative">{CAD(dashboard.totals.annualInterestEstimate)}</p>
+              <small>{CAD(dashboard.totals.monthlyInterestEstimate)} this month</small>
+            </div>
           </div>
-          <div className="card">
-            <h3>Minimums (Monthly)</h3>
-            <p className="amount">${dashboard.totals.totalMinimumPayment.toFixed(2)}</p>
+          {(dashboard.liveAccountCount ?? 0) > 0 && (
+            <p style={{ fontSize: 12, color: "var(--text-light)", margin: "0 0 1rem", paddingLeft: 2 }}>
+              Includes {dashboard.liveAccountCount} liability account{dashboard.liveAccountCount !== 1 ? "s" : ""} from your Accounts tab not yet imported — use{" "}
+              <button
+                onClick={detect}
+                style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", fontSize: 12, padding: 0, textDecoration: "underline" }}
+              >
+                Detect &amp; Import
+              </button>{" "}
+              to track them with your actual interest rates.
+            </p>
+          )}
+        </>
+      )}
+
+      {/* ── Detect & Import panel ── */}
+      {(detected !== null || detecting || detectError) && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1.25rem" }}>
+          {/* Panel header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+                {detecting ? "Scanning your accounts…"
+                  : detectError ? "Scan failed"
+                  : "Detected Liability Accounts"}
+              </h3>
+              {!detecting && !detectError && detected !== null && (
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-light)" }}>
+                  {visibleDetected.length === 0
+                    ? "All liability accounts are already in the debt planner."
+                    : `${newCount} new debt${newCount !== 1 ? "s" : ""} detected — review and edit the details, then import`}
+                </p>
+              )}
+              {detectError && (
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#dc2626" }}>{detectError}</p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {!detecting && !detectError && newCount > 0 && (
+                <button
+                  onClick={importAll}
+                  disabled={importingAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, background: "var(--primary)", color: "white", border: "none", fontSize: 13, cursor: "pointer", fontWeight: 600 }}
+                >
+                  {importingAll ? "Importing…" : `Import All ${newCount}`}
+                </button>
+              )}
+              <button
+                onClick={() => { setDetected(null); setDetectError(null); }}
+                style={{ padding: "7px 12px", borderRadius: 7, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13, cursor: "pointer" }}
+              >
+                Close
+              </button>
+            </div>
           </div>
-          <div className="card">
-            <h3>Weighted APR</h3>
-            <p className="amount">{dashboard.totals.weightedInterestRate.toFixed(2)}%</p>
-          </div>
-          <div className="card">
-            <h3>Interest Forecast</h3>
-            <p className="amount negative">${dashboard.totals.annualInterestEstimate.toFixed(2)}</p>
-            <small>${dashboard.totals.monthlyInterestEstimate.toFixed(2)} this month</small>
-          </div>
+
+          {detecting && (
+            <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-light)", fontSize: 14 }}>
+              Calculating live balances from transaction history…
+            </div>
+          )}
+
+          {/* Detected debt cards */}
+          {!detecting && visibleDetected.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {visibleDetected.map((d) => {
+                const s = editStates[d.accountId];
+                if (!s) return null;
+                const isImporting = importingId === d.accountId;
+                return (
+                  <div
+                    key={d.accountId}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "14px 16px",
+                      background: d.alreadyImported ? "var(--bg)" : "var(--bg-card)",
+                      opacity: d.alreadyImported ? 0.65 : 1,
+                    }}
+                  >
+                    {/* Top row: icon + description + status */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <span style={{ fontSize: 22 }}>{TYPE_ICON[d.accountType] ?? "📋"}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 15 }}>{d.suggestedName}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-light)", marginTop: 1 }}>{d.description}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: "#dc2626" }}>{CAD(d.balance)}</span>
+                        {d.alreadyImported ? (
+                          <span style={{ fontSize: 12, color: "#059669", fontWeight: 600, padding: "3px 10px", borderRadius: 8, background: "#d1fae5" }}>✓ Imported</span>
+                        ) : (
+                          <button
+                            onClick={() => importOne(d)}
+                            disabled={isImporting}
+                            style={{ padding: "5px 14px", borderRadius: 7, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", fontSize: 13, cursor: "pointer", fontWeight: 600 }}
+                          >
+                            {isImporting ? "Importing…" : "+ Import"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDismissed((prev) => new Set([...prev, d.accountId]))}
+                          title="Dismiss"
+                          style={{ padding: "4px 8px", borderRadius: 6, background: "none", color: "var(--text-light)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer" }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Editable fields grid */}
+                    {!d.alreadyImported && (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+                        {/* Name */}
+                        <div>
+                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Debt Name</label>
+                          <input
+                            type="text"
+                            value={s.name}
+                            onChange={(e) => patchEdit(d.accountId, { name: e.target.value })}
+                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
+                          />
+                        </div>
+
+                        {/* Type */}
+                        <div>
+                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Debt Type</label>
+                          <select
+                            value={s.type}
+                            onChange={(e) => patchEdit(d.accountId, { type: e.target.value as Debt["type"] })}
+                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
+                          >
+                            {DEBT_TYPES.map((t) => (
+                              <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Interest rate */}
+                        <div>
+                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                            Interest Rate %
+                            <span style={{ fontWeight: 400, marginLeft: 4, fontSize: 10 }}>(est.)</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={s.interestRate}
+                            onChange={(e) => patchEdit(d.accountId, { interestRate: e.target.value })}
+                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
+                          />
+                        </div>
+
+                        {/* Minimum payment */}
+                        <div>
+                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                            Min. Payment / mo
+                            <span style={{ fontWeight: 400, marginLeft: 4, fontSize: 10 }}>(calc.)</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={s.minimumPayment}
+                            onChange={(e) => patchEdit(d.accountId, { minimumPayment: e.target.value })}
+                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
+                          />
+                        </div>
+
+                        {/* Lender */}
+                        <div>
+                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Lender / Institution</label>
+                          <input
+                            type="text"
+                            value={s.lender}
+                            onChange={(e) => patchEdit(d.accountId, { lender: e.target.value })}
+                            placeholder={d.institution ?? "e.g. TD Bank"}
+                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <p style={{ fontSize: 11, color: "var(--text-light)", margin: "4px 0 0" }}>
+                💡 Balances are calculated from your transaction history. Interest rates and minimum payments are Canadian estimates — update them to reflect your actual terms before importing.
+              </p>
+            </div>
+          )}
+
+          {/* No new debts found state */}
+          {!detecting && !detectError && detected !== null && visibleDetected.length === 0 && (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-light)", fontSize: 14 }}>
+              No untracked liability accounts found. Add accounts in the Accounts tab first, or add debts manually.
+            </div>
+          )}
         </div>
       )}
 
+      {/* ── Manual add form ── */}
       {showForm && (
         <div className="card form-card">
           <h3>Track New Debt</h3>
           <form onSubmit={handleSubmit}>
-            <input
-              type="text"
-              placeholder="Debt Name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+            <input type="text" placeholder="Debt Name" value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
 
             <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value as Debt["type"] })}>
-              <option value="credit-card">Credit Card</option>
-              <option value="student-loan">Student Loan</option>
-              <option value="mortgage">Mortgage</option>
-              <option value="auto-loan">Auto Loan</option>
-              <option value="personal-loan">Personal Loan</option>
-              <option value="other">Other</option>
+              {DEBT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
 
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Original Principal"
-              value={formData.principal}
-              onChange={(e) => setFormData({ ...formData, principal: e.target.value })}
-              required
-            />
+            <input type="number" step="0.01" placeholder="Original Principal" value={formData.principal}
+              onChange={(e) => setFormData({ ...formData, principal: e.target.value })} required />
 
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Current Balance"
-              value={formData.currentBalance}
-              onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-              required
-            />
+            <input type="number" step="0.01" placeholder="Current Balance" value={formData.currentBalance}
+              onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })} required />
 
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Interest Rate (%)"
-              value={formData.interestRate}
-              onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
-              required
-            />
+            <input type="number" step="0.01" placeholder="Interest Rate (%)" value={formData.interestRate}
+              onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })} required />
 
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Minimum Payment (Monthly)"
-              value={formData.minimumPayment}
-              onChange={(e) => setFormData({ ...formData, minimumPayment: e.target.value })}
-              required
-            />
+            <input type="number" step="0.01" placeholder="Minimum Payment (Monthly)" value={formData.minimumPayment}
+              onChange={(e) => setFormData({ ...formData, minimumPayment: e.target.value })} required />
 
-            <input
-              type="text"
-              placeholder="Lender (optional)"
-              value={formData.lender}
-              onChange={(e) => setFormData({ ...formData, lender: e.target.value })}
-            />
+            <input type="text" placeholder="Lender (optional)" value={formData.lender}
+              onChange={(e) => setFormData({ ...formData, lender: e.target.value })} />
 
             <label>
               Due Date Mode
-              <select
-                value={formData.dueScheduleType}
-                onChange={(e) => setFormData({ ...formData, dueScheduleType: e.target.value as "specific" | "monthly" | "biweekly" })}
-              >
+              <select value={formData.dueScheduleType}
+                onChange={(e) => setFormData({ ...formData, dueScheduleType: e.target.value as "specific" | "monthly" | "biweekly" })}>
                 <option value="specific">Specific Date (one-time)</option>
                 <option value="monthly">Specific Day Each Month</option>
                 <option value="biweekly">Biweekly Cycle (every 14 days)</option>
@@ -281,12 +630,11 @@ export default function Debts() {
             </label>
 
             <label>
-              {formData.dueScheduleType === "specific"
-                ? "Specific Due Date"
-                : formData.dueScheduleType === "monthly"
-                  ? "Monthly Anchor Date"
-                  : "Biweekly Anchor Date"}
-              <input type="date" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} />
+              {formData.dueScheduleType === "specific" ? "Specific Due Date"
+                : formData.dueScheduleType === "monthly" ? "Monthly Anchor Date"
+                : "Biweekly Anchor Date"}
+              <input type="date" value={formData.dueDate}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} />
             </label>
 
             <button type="submit">Save Debt</button>
@@ -294,6 +642,7 @@ export default function Debts() {
         </div>
       )}
 
+      {/* ── Debt accounts table ── */}
       {debts.length > 0 && (
         <div className="card" style={{ marginBottom: "1rem" }}>
           <h3 style={{ marginTop: 0 }}>Debt Accounts</h3>
@@ -319,8 +668,14 @@ export default function Debts() {
                   <td>{debt.interestRate.toFixed(2)}%</td>
                   <td>${debt.minimumPayment.toFixed(2)}</td>
                   <td>
-                    {debt.nextDueDate ? new Date(debt.nextDueDate).toLocaleDateString() : debt.dueDate ? new Date(debt.dueDate).toLocaleDateString() : "-"}
-                    <div style={{ color: "var(--text-light)", fontSize: "0.8rem" }}>{debt.dueScheduleType || "specific"}</div>
+                    {debt.nextDueDate
+                      ? new Date(debt.nextDueDate).toLocaleDateString()
+                      : debt.dueDate
+                      ? new Date(debt.dueDate).toLocaleDateString()
+                      : "-"}
+                    <div style={{ color: "var(--text-light)", fontSize: "0.8rem" }}>
+                      {debt.dueScheduleType || "specific"}
+                    </div>
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -349,6 +704,7 @@ export default function Debts() {
         </div>
       )}
 
+      {/* ── Payoff planner ── */}
       {debts.length > 0 && (
         <div className="card" style={{ marginBottom: "1rem" }}>
           <h3 style={{ marginTop: 0 }}>Payoff Planner (Avalanche vs Snowball)</h3>
@@ -362,11 +718,13 @@ export default function Debts() {
             </label>
             <label>
               Payment per {cadence === "biweekly" ? "Paycheck" : "Month"}
-              <input type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+              <input type="number" step="0.01" value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)} />
             </label>
             <label>
               What-if Extra
-              <input type="number" step="0.01" value={extraPayment} onChange={(e) => setExtraPayment(e.target.value)} />
+              <input type="number" step="0.01" value={extraPayment}
+                onChange={(e) => setExtraPayment(e.target.value)} />
             </label>
             <button onClick={loadPlanner}>Run Planner</button>
           </div>
@@ -386,7 +744,8 @@ export default function Debts() {
               <div className="card">
                 <h4>Best Interest Saver</h4>
                 <p>
-                  Avalanche interest savings vs Snowball: <strong>
+                  Avalanche saves vs Snowball:{" "}
+                  <strong>
                     ${((strategies.snowball?.totalInterestPaid ?? 0) - (strategies.avalanche?.totalInterestPaid ?? 0)).toFixed(2)}
                   </strong>
                 </p>
@@ -396,10 +755,8 @@ export default function Debts() {
 
           {optimizer && (
             <div style={{ marginTop: "1rem" }}>
-              <h4>Biweekly/Monthly Payment Optimizer</h4>
-              <p>
-                Minimum total: ${optimizer.totalMinimumPerCadence.toFixed(2)} | Extra available: ${optimizer.extraPerCadence.toFixed(2)}
-              </p>
+              <h4>Payment Optimizer</h4>
+              <p>Minimum total: ${optimizer.totalMinimumPerCadence.toFixed(2)} | Extra: ${optimizer.extraPerCadence.toFixed(2)}</p>
               <table>
                 <thead>
                   <tr>
@@ -417,7 +774,7 @@ export default function Debts() {
                       <td>{a.interestRate.toFixed(2)}%</td>
                       <td>${a.minimumPerCadence.toFixed(2)}</td>
                       <td>${a.recommendedPerCadence.toFixed(2)}</td>
-                      <td>{a.focusDebt ? "Yes" : "No"}</td>
+                      <td>{a.focusDebt ? "✓ Focus" : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -438,6 +795,7 @@ export default function Debts() {
         </div>
       )}
 
+      {/* ── Upcoming due dates ── */}
       {dashboard && dashboard.upcomingDue.length > 0 && (
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Upcoming Due Dates (30 Days)</h3>
@@ -454,7 +812,11 @@ export default function Debts() {
                 <tr key={debt._id}>
                   <td>{debt.name}</td>
                   <td>
-                    {debt.nextDueDate ? new Date(debt.nextDueDate).toLocaleDateString() : debt.dueDate ? new Date(debt.dueDate).toLocaleDateString() : "-"}
+                    {debt.nextDueDate
+                      ? new Date(debt.nextDueDate).toLocaleDateString()
+                      : debt.dueDate
+                      ? new Date(debt.dueDate).toLocaleDateString()
+                      : "-"}
                     <div style={{ color: "var(--text-light)", fontSize: "0.8rem" }}>{debt.dueScheduleType || "specific"}</div>
                   </td>
                   <td>${debt.minimumPayment.toFixed(2)}</td>
@@ -465,22 +827,17 @@ export default function Debts() {
         </div>
       )}
 
+      {/* ── Empty state ── */}
       {debts.length === 0 && !showForm && (
         <div className="empty-state">
-          <p>No debts yet. Add debts to unlock payoff planning and what-if simulations.</p>
+          <p>No debts tracked yet.</p>
+          <p style={{ fontSize: 13, color: "var(--text-light)" }}>
+            Click <strong>Detect &amp; Import</strong> to automatically find debts from your liability accounts,
+            or click <strong>Add Debt</strong> to enter one manually.
+          </p>
           <p>Total debt tracked: ${totalDebt.toFixed(2)}</p>
         </div>
       )}
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-

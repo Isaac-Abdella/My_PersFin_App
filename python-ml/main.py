@@ -47,17 +47,26 @@ class BudgetSuggestReq(BaseModel):
 # ── Helpers ─────────────────────────────────────────────────────────────────────
 
 def _ets_forecast(series: pd.Series, n: int) -> pd.Series:
-    """Holt exponential smoothing with moving-average fallback."""
+    """Holt exponential smoothing with moving-average fallback.
+
+    statsmodels returns a RangeIndex on the forecast when it cannot infer the
+    series frequency (common with pandas 2.2+ DatetimeIndex without explicit freq).
+    We always build the future DatetimeIndex ourselves so the caller can safely
+    call .strftime() on every index value.
+    """
+    last_date = pd.Timestamp(series.index[-1])
+    future_idx = pd.date_range(last_date + pd.DateOffset(months=1), periods=n, freq="MS")
     try:
         from statsmodels.tsa.holtwinters import ExponentialSmoothing
         trend = "add" if len(series) >= 4 else None
         damped = trend is not None and len(series) >= 6
         model = ExponentialSmoothing(series, trend=trend, damped_trend=damped).fit(optimized=True)
-        return model.forecast(n)
+        fc = model.forecast(n)
+        # fc may have a RangeIndex — replace it with the correct future dates
+        return pd.Series(fc.values, index=future_idx)
     except Exception:
-        avg = series.mean()
-        idx = pd.date_range(series.index[-1] + pd.DateOffset(months=1), periods=n, freq="MS")
-        return pd.Series([avg] * n, index=idx)
+        avg = float(series.mean())
+        return pd.Series([avg] * n, index=future_idx)
 
 
 # ── Endpoints ───────────────────────────────────────────────────────────────────

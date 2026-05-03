@@ -26,13 +26,14 @@ function isDemoUser(email: string) {
 }
 
 async function clearUserData(userId: mongoose.Types.ObjectId) {
+  const userIdStr = userId.toString();
   await Promise.all([
-    Transaction.deleteMany({ userId }),
-    Account.deleteMany({ userId }),
-    Budget.deleteMany({ userId }),
-    Bill.deleteMany({ userId }),
-    Goal.deleteMany({ userId }),
-    NetWorthSnapshot.deleteMany({ userId }),
+    Transaction.deleteMany({ userId: userIdStr }),
+    Account.deleteMany({ userId: userIdStr }),
+    Budget.deleteMany({ userId: userIdStr }),
+    Bill.deleteMany({ userId: userIdStr }),
+    Goal.deleteMany({ userId: userIdStr }),
+    NetWorthSnapshot.deleteMany({ userId: userIdStr }),
   ]);
 }
 
@@ -75,13 +76,15 @@ router.post("/reset", async (req: Request, res: Response) => {
     if (seedUser) {
       // Move all seeded documents from the new userId to the original
       const newUid = seedUser._id as mongoose.Types.ObjectId;
+      const newUidStr = newUid.toString();
+      const userIdStr = userId.toString();
       await Promise.all([
-        Account.updateMany({ userId: newUid }, { userId }),
-        Transaction.updateMany({ userId: newUid }, { userId }),
-        Budget.updateMany({ userId: newUid }, { userId }),
-        Bill.updateMany({ userId: newUid }, { userId }),
-        Goal.updateMany({ userId: newUid }, { userId }),
-        NetWorthSnapshot.updateMany({ userId: newUid }, { userId }),
+        Account.updateMany({ userId: newUidStr }, { userId: userIdStr }),
+        Transaction.updateMany({ userId: newUidStr }, { userId: userIdStr }),
+        Budget.updateMany({ userId: newUidStr }, { userId: userIdStr }),
+        Bill.updateMany({ userId: newUidStr }, { userId: userIdStr }),
+        Goal.updateMany({ userId: newUidStr }, { userId: userIdStr }),
+        NetWorthSnapshot.updateMany({ userId: newUidStr }, { userId: userIdStr }),
       ]);
       await User.deleteOne({ _id: newUid });
     }

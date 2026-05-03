@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response as ExpressResponse } from "express";
 import { Transaction } from "../models/Transaction";
 import { requireAuth } from "../middleware/requireLogin";
 
@@ -8,16 +8,24 @@ router.use(requireAuth);
 const ML_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
 
 async function proxyML(endpoint: string, body: object): Promise<any> {
-  const res = await fetch(`${ML_URL}${endpoint}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`ML service error (${res.status}): ${text.slice(0, 200)}`);
+  let raw: globalThis.Response;
+  try {
+    raw = await fetch(`${ML_URL}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // Network-level failure — uvicorn is not reachable
+    const err = new Error("Cannot reach the Python ML service — make sure uvicorn is running on port 8000");
+    (err as any).isNetworkError = true;
+    throw err;
   }
-  return res.json();
+  if (!raw.ok) {
+    const text = await raw.text();
+    throw new Error(`ML analysis error (${raw.status}): ${text.slice(0, 300)}`);
+  }
+  return raw.json();
 }
 
 async function buildMonthlySpending(userId: string, months: number) {
@@ -40,26 +48,34 @@ async function buildMonthlySpending(userId: string, months: number) {
   });
 }
 
-router.post("/forecast", async (req: Request, res: Response) => {
+router.post("/forecast", async (req: Request, res: ExpressResponse) => {
   try {
     const userId = (req.user as any).id;
     const monthly = await buildMonthlySpending(userId, 12);
+    if (monthly.length === 0) {
+      return res.json({ forecasts: {}, months_forecast: 0, message: "Not enough transaction history for a forecast yet." });
+    }
     const result = await proxyML("/forecast", {
       monthly_spending: monthly,
       forecast_months: Number(req.body.months) || 3,
     });
     res.json(result);
   } catch (err: any) {
-    res.status(502).json({ error: err.message });
+    const status = (err as any).isNetworkError ? 502 : 422;
+    res.status(status).json({ message: err.message });
   }
 });
 
-router.post("/anomalies", async (req: Request, res: Response) => {
+router.post("/anomalies", async (req: Request, res: ExpressResponse) => {
   try {
     const userId = (req.user as any).id;
     const since = new Date();
     since.setMonth(since.getMonth() - 3);
     const txns = await Transaction.find({ userId, date: { $gte: since } });
+
+    if (txns.length === 0) {
+      return res.json({ anomalies: [], totalScanned: 0, anomalyCount: 0, message: "No transactions in the past 3 months to scan." });
+    }
 
     const transactions = txns.map(t => ({
       id: t._id.toString(),
@@ -72,18 +88,23 @@ router.post("/anomalies", async (req: Request, res: Response) => {
     const result = await proxyML("/anomalies", { transactions });
     res.json(result);
   } catch (err: any) {
-    res.status(502).json({ error: err.message });
+    const status = (err as any).isNetworkError ? 502 : 422;
+    res.status(status).json({ message: err.message });
   }
 });
 
-router.post("/suggest-budgets", async (req: Request, res: Response) => {
+router.post("/suggest-budgets", async (req: Request, res: ExpressResponse) => {
   try {
     const userId = (req.user as any).id;
     const monthly = await buildMonthlySpending(userId, 6);
+    if (monthly.length === 0) {
+      return res.json({ suggestions: [], monthsAnalyzed: 0, message: "Not enough transaction history for budget suggestions yet." });
+    }
     const result = await proxyML("/suggest-budgets", { monthly_spending: monthly });
     res.json(result);
   } catch (err: any) {
-    res.status(502).json({ error: err.message });
+    const status = (err as any).isNetworkError ? 502 : 422;
+    res.status(status).json({ message: err.message });
   }
 });
 

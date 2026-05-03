@@ -29,6 +29,7 @@ export default function Bills() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [summary, setSummary] = useState<BillsSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('active');
@@ -51,14 +52,16 @@ export default function Bills() {
 
   const fetchBills = async () => {
     try {
+      setError(null);
       const [billsData, summaryData] = await Promise.all([
         api(`/bills?status=${statusFilter}`),
         api('/bills/summary'),
       ]);
-      setBills(billsData.bills);
-      setSummary(summaryData.summary);
+      setBills(billsData.bills || []);
+      setSummary(summaryData.summary || null);
     } catch (err) {
       console.error('Error fetching bills:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load bills');
     } finally {
       setLoading(false);
     }
@@ -159,7 +162,8 @@ export default function Bills() {
     other: '📝',
   };
 
-  if (loading) return <div>Loading bills...</div>;
+  if (loading) return <div className="loading-state">Loading bills...</div>;
+  if (error) return <div className="error-state">Error: {error}</div>;
 
   return (
     <div className="bills-container">

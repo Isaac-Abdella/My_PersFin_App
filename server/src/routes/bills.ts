@@ -81,6 +81,50 @@ router.post('/', async (req, res, next) => {
 });
 
 /**
+ * GET /bills/summary
+ * Get bills summary (total monthly, upcoming, etc.)
+ * MUST be before /:id so Express doesn't treat "summary" as an id.
+ */
+router.get('/summary', async (req, res, next) => {
+  try {
+    const userId = (req.user as any)._id;
+    const activeBills = await Bill.find({ userId, status: 'active' });
+
+    const monthlyTotal = activeBills.reduce((sum, bill) => {
+      return sum + getMonthlyEquivalent(bill);
+    }, 0);
+
+    const nextPaymentBills = activeBills
+      .map(bill => ({
+        ...bill.toObject(),
+        nextPaymentDate: getNextPaymentDate(bill),
+        monthlyEquivalent: getMonthlyEquivalent(bill),
+      }))
+      .sort((a, b) => a.nextPaymentDate.getTime() - b.nextPaymentDate.getTime())
+      .slice(0, 5);
+
+    const byCategory: any = {};
+    activeBills.forEach(bill => {
+      if (!byCategory[bill.category]) {
+        byCategory[bill.category] = 0;
+      }
+      byCategory[bill.category] += getMonthlyEquivalent(bill);
+    });
+
+    res.json({
+      summary: {
+        totalMonthly: monthlyTotal,
+        byCategory,
+        upcomingBills: nextPaymentBills,
+        totalBills: activeBills.length,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /bills/:id
  * Get a specific bill
  */
@@ -192,49 +236,6 @@ router.patch('/:id/status', async (req, res, next) => {
   }
 });
 
-/**
- * GET /bills/summary
- * Get bills summary (total monthly, upcoming, etc.)
- */
-router.get('/summary', async (req, res, next) => {
-  try {
-    const userId = (req.user as any)._id;
-    const activeBills = await Bill.find({ userId, status: 'active' });
-
-    const monthlyTotal = activeBills.reduce((sum, bill) => {
-      return sum + getMonthlyEquivalent(bill);
-    }, 0);
-
-    const nextPaymentBills = activeBills
-      .map(bill => ({
-        ...bill.toObject(),
-        nextPaymentDate: getNextPaymentDate(bill),
-        monthlyEquivalent: getMonthlyEquivalent(bill),
-      }))
-      .sort((a, b) => a.nextPaymentDate.getTime() - b.nextPaymentDate.getTime())
-      .slice(0, 5);
-
-    const byCategory: any = {};
-    activeBills.forEach(bill => {
-      if (!byCategory[bill.category]) {
-        byCategory[bill.category] = 0;
-      }
-      byCategory[bill.category] += getMonthlyEquivalent(bill);
-    });
-
-    res.json({
-      summary: {
-        totalMonthly: monthlyTotal,
-        byCategory,
-        upcomingBills: nextPaymentBills,
-        totalBills: activeBills.length,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
 function getNextPaymentDate(bill: any): Date {
   const today = new Date();
   const dayOfMonth = bill.dueDate;
@@ -249,8 +250,8 @@ function getNextPaymentDate(bill: any): Date {
 
 function isPaymentOverdue(bill: any): boolean {
   const today = new Date();
-  const lastDayOfPreviousMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-  const dueDay = Math.min(bill.dueDate, lastDayOfPreviousMonth);
+  const lastDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const dueDay = Math.min(bill.dueDate, lastDayOfCurrentMonth);
   const dueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
 
   return dueDate < today;

@@ -47,6 +47,33 @@ const LIABILITY_TYPES = new Set([
   "mortgage", "auto-loan", "personal-loan",
 ]);
 
+type StepKey = "netWorth" | "debts" | "recurring" | "forecast" | "anomalies" | "budgets";
+type StepStatus = "idle" | "running" | "done" | "error";
+type StepResult = { status: StepStatus; msg: string };
+
+const STEP_LABELS: Record<StepKey, string> = {
+  netWorth:  "Net Worth Snapshot",
+  debts:     "Liability Accounts → Debts",
+  recurring: "Recurring Patterns",
+  forecast:  "Spending Forecast",
+  anomalies: "Anomaly Detection",
+  budgets:   "Budget Suggestions",
+};
+
+const STEP_ICONS: Record<StepStatus, string> = {
+  idle:    "○",
+  running: "⏳",
+  done:    "✓",
+  error:   "✗",
+};
+
+const STEP_COLORS: Record<StepStatus, string> = {
+  idle:    "var(--text-light)",
+  running: "#F59E0B",
+  done:    "#10B981",
+  error:   "#EF4444",
+};
+
 export default function Dashboard() {
   const [accounts,         setAccounts]         = useState<Account[]>([]);
   const [snapshot,         setSnapshot]         = useState<FinancialSnapshot | null>(null);
@@ -59,6 +86,18 @@ export default function Dashboard() {
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [newAccount,       setNewAccount]       = useState({
     name: "", type: "chequing" as const, balance: "0", currency: "CAD",
+  });
+
+  // ── Smart Analysis state ────────────────────────────────────────────────────
+  const [analysisOpen,    setAnalysisOpen]    = useState(false);
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<Record<StepKey, StepResult>>({
+    netWorth:  { status: "idle", msg: "" },
+    debts:     { status: "idle", msg: "" },
+    recurring: { status: "idle", msg: "" },
+    forecast:  { status: "idle", msg: "" },
+    anomalies: { status: "idle", msg: "" },
+    budgets:   { status: "idle", msg: "" },
   });
 
   useEffect(() => { loadData(); }, []);
@@ -85,6 +124,136 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const patchStep = (key: StepKey, status: StepStatus, msg: string) =>
+    setAnalysisResults(prev => ({ ...prev, [key]: { status, msg } }));
+
+  const runAllAnalysis = async () => {
+    setAnalysisOpen(true);
+    setAnalysisRunning(true);
+    const running: Record<StepKey, StepResult> = {
+      netWorth:  { status: "running", msg: "Saving net worth snapshot…" },
+      debts:     { status: "running", msg: "Detecting liability accounts…" },
+      recurring: { status: "running", msg: "Detecting recurring patterns…" },
+      forecast:  { status: "running", msg: "Running spending forecast…" },
+      anomalies: { status: "running", msg: "Checking for anomalies…" },
+      budgets:   { status: "running", msg: "Generating budget suggestions…" },
+    };
+    setAnalysisResults(running);
+
+    await Promise.allSettled([
+
+      // 1 ── Net worth snapshot ──────────────────────────────────────────────
+      api("/net-worth/snapshot", { method: "POST", body: JSON.stringify({}) })
+        .then((r: any) => {
+          const nw = r?.snapshot?.netWorth ?? r?.netWorth;
+          patchStep("netWorth", "done",
+            nw != null ? `Saved — net worth ${fmtCAD(nw)}` : "Snapshot saved");
+        })
+        .catch((e: any) => patchStep("netWorth", "error", e.message || "Failed")),
+
+      // 2 ── Detect & auto-import liability accounts as debts ────────────────
+      (async () => {
+        const detected: any[] = await api("/debts/detect-from-accounts");
+        const toImport = detected.filter((d) => !d.alreadyImported);
+        let imported = 0;
+        for (const d of toImport) {
+          await api("/debts", {
+            method: "POST",
+            body: JSON.stringify({
+              name:            d.suggestedName,
+              type:            d.debtType,
+              principal:       d.balance,
+              currentBalance:  d.balance,
+              interestRate:    d.defaultInterestRate,
+              minimumPayment:  d.defaultMinPayment,
+              lender:          d.institution || undefined,
+              dueScheduleType: "monthly",
+            }),
+          });
+          imported++;
+        }
+        const already = detected.length - toImport.length;
+        if (imported > 0 && already > 0)
+          patchStep("debts", "done", `${imported} imported, ${already} already tracked`);
+        else if (imported > 0)
+          patchStep("debts", "done", `${imported} debt${imported !== 1 ? "s" : ""} imported`);
+        else if (already > 0)
+          patchStep("debts", "done", `${already} debt${already !== 1 ? "s" : ""} already tracked`);
+        else
+          patchStep("debts", "done", "No liability accounts found");
+      })().catch((e: any) => patchStep("debts", "error", e.message || "Failed")),
+
+      // 3 ── Detect & auto-import recurring patterns ─────────────────────────
+      (async () => {
+        const detected: any[] = await api("/recurring/detect");
+        // Only auto-import patterns with confidence ≥ 0.5 that aren't tracked yet
+        const toImport = detected.filter((d) => !d.alreadyTracked && d.confidence >= 0.5);
+        let imported = 0;
+        for (const d of toImport) {
+          await api("/recurring", {
+            method: "POST",
+            body: JSON.stringify({
+              name:        d.name,
+              amount:      d.amount,
+              type:        d.type,
+              category:    d.category,
+              frequency:   d.frequency,
+              dayOfMonth:  d.dayOfMonth,
+              nextDueDate: d.nextDueDate,
+              accountId:   d.accountId,
+              isActive:    true,
+            }),
+          });
+          imported++;
+        }
+        const already = detected.filter((d) => d.alreadyTracked).length;
+        if (imported > 0 && already > 0)
+          patchStep("recurring", "done", `${imported} imported, ${already} already tracked`);
+        else if (imported > 0)
+          patchStep("recurring", "done", `${imported} pattern${imported !== 1 ? "s" : ""} imported`);
+        else if (already > 0)
+          patchStep("recurring", "done", `${already} pattern${already !== 1 ? "s" : ""} already tracked`);
+        else
+          patchStep("recurring", "done", "No recurring patterns detected");
+      })().catch((e: any) => patchStep("recurring", "error", e.message || "Failed")),
+
+      // 4 ── ML spending forecast ────────────────────────────────────────────
+      api("/ml/forecast", { method: "POST", body: JSON.stringify({ months: 3 }) })
+        .then((r: any) => {
+          if (r?.message) return patchStep("forecast", "done", r.message);
+          // forecasts is an object keyed by category name, not an array
+          const n = r?.forecasts ? Object.keys(r.forecasts).length : 0;
+          patchStep("forecast", "done",
+            n > 0 ? `3-month forecast ready — ${n} categor${n !== 1 ? "ies" : "y"}` : "Forecast ready");
+        })
+        .catch((e: any) => patchStep("forecast", "error", e.message || "ML service unavailable")),
+
+      // 5 ── ML anomaly detection ────────────────────────────────────────────
+      api("/ml/anomalies", { method: "POST", body: JSON.stringify({}) })
+        .then((r: any) => {
+          if (r?.message) return patchStep("anomalies", "done", r.message);
+          const n = r?.anomalyCount ?? r?.anomalies?.length ?? 0;
+          patchStep("anomalies", "done",
+            n > 0 ? `${n} unusual transaction${n !== 1 ? "s" : ""} flagged` : "No anomalies detected");
+        })
+        .catch((e: any) => patchStep("anomalies", "error", e.message || "ML service unavailable")),
+
+      // 6 ── ML budget suggestions ───────────────────────────────────────────
+      api("/ml/suggest-budgets", { method: "POST", body: JSON.stringify({}) })
+        .then((r: any) => {
+          if (r?.message) return patchStep("budgets", "done", r.message);
+          const n = r?.suggestions?.length ?? 0;
+          patchStep("budgets", "done",
+            n > 0 ? `${n} budget suggestion${n !== 1 ? "s" : ""} generated` : "Budget suggestions ready");
+        })
+        .catch((e: any) => patchStep("budgets", "error", e.message || "ML service unavailable")),
+
+    ]);
+
+    setAnalysisRunning(false);
+    loadData(); // refresh KPI cards with fresh data
   };
 
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -155,14 +324,90 @@ export default function Dashboard() {
     <div className="page">
 
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="page-header">
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <h1>Dashboard</h1>
-        <button onClick={() =>
-          showAccountForm && !editingAccountId ? cancelEdit() : setShowAccountForm(!showAccountForm)
-        }>
-          {showAccountForm ? "Cancel" : "Add Account"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={runAllAnalysis}
+            disabled={analysisRunning}
+            style={{ padding: "8px 16px", borderRadius: 7, background: analysisRunning ? "var(--bg-card)" : "var(--primary)", color: analysisRunning ? "var(--text)" : "white", border: "1px solid var(--border)", fontSize: 14, cursor: analysisRunning ? "not-allowed" : "pointer", fontWeight: 600 }}
+          >
+            {analysisRunning ? "⏳ Analysing…" : "⚡ Run All Analysis"}
+          </button>
+          <button onClick={() =>
+            showAccountForm && !editingAccountId ? cancelEdit() : setShowAccountForm(!showAccountForm)
+          }>
+            {showAccountForm ? "Cancel" : "Add Account"}
+          </button>
+        </div>
       </div>
+
+      {/* ── Smart Analysis Panel ────────────────────────────────── */}
+      {analysisOpen && (
+        <div className="card" style={{ marginBottom: "1rem", padding: "1.25rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+                {analysisRunning ? "Running Smart Analysis…" : "Analysis Complete"}
+              </h3>
+              {!analysisRunning && (
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-light)" }}>
+                  Dashboard refreshed — visit each page to see the full results.
+                </p>
+              )}
+            </div>
+            {!analysisRunning && (
+              <button
+                onClick={() => setAnalysisOpen(false)}
+                style={{ padding: "6px 12px", borderRadius: 7, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13, cursor: "pointer" }}
+              >
+                Close
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {(Object.keys(STEP_LABELS) as StepKey[]).map((key) => {
+              const step = analysisResults[key];
+              return (
+                <div
+                  key={key}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <span style={{ fontSize: 16, color: STEP_COLORS[step.status], minWidth: 20, textAlign: "center" }}>
+                    {STEP_ICONS[step.status]}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{STEP_LABELS[key]}</div>
+                    {step.msg && (
+                      <div style={{ fontSize: 12, color: step.status === "error" ? "#EF4444" : "var(--text-light)", marginTop: 1 }}>
+                        {step.msg}
+                      </div>
+                    )}
+                  </div>
+                  {step.status === "running" && (
+                    <div style={{ fontSize: 11, color: "#F59E0B", fontStyle: "italic" }}>in progress</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {!analysisRunning && (
+            <p style={{ margin: "12px 0 0", fontSize: 11, color: "var(--text-light)" }}>
+              💡 Debts and recurring transactions have been auto-imported using Canadian default rates. Visit those pages to review and adjust the details.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Account Form ───────────────────────────────────────── */}
       {showAccountForm && (
