@@ -1,0 +1,239 @@
+/* TFSARoom page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.tfsa-container {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.tfsa-container h1 {
+  font-size: 0.92rem;
+  color: var(--text);
+  margin: 0 0 6px 0;
+}
+
+.tfsa-intro {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 0 0 12px 0;
+  max-width: 680px;
+}
+
+/* ── Section card ──────────────────────────── */
+.section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.section-card h2 {
+  margin: 0 0 10px 0;
+  font-size: 0.82rem;
+}
+
+.section-card h3 {
+  margin: 0 0 6px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.tfsa-input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ── Over-contribution alert ───────────────── */
+.over-contrib-alert {
+  background: #fef2f2;
+  border: 2px solid var(--danger);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.over-contrib-alert strong {
+  color: var(--danger);
+  font-size: 0.82rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.over-contrib-alert p {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+[data-theme="dark"] .over-contrib-alert {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+/* ── Summary cards grid ────────────────────── */
+.tfsa-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.stat-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.stat-sub {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-top: 3px;
+}
+
+/* ── Next-year info banner ─────────────────── */
+.next-year-banner {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  color: #1e40af;
+}
+
+[data-theme="dark"] .next-year-banner {
+  background: rgba(30, 64, 175, 0.12);
+  border-color: rgba(147, 197, 253, 0.3);
+  color: #93c5fd;
+}
+
+/* ── Schedule table card ───────────────────── */
+.schedule-table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.table-card-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-card-header h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.table-card-header p {
+  margin: 3px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-light);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.schedule-table th {
+  background: var(--primary);
+  color: white;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.schedule-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-table tr.row-current td {
+  background: #eff6ff;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .schedule-table tr.row-current td {
+  background: rgba(30, 64, 175, 0.12);
+}
+
+.schedule-table tr.row-ineligible {
+  opacity: 0.5;
+}
+
+.schedule-table tr.row-even td {
+  background: var(--bg-card);
+}
+
+.schedule-table tr.row-odd td {
+  background: var(--bg);
+}
+
+.current-year-badge {
+  margin-left: 6px;
+  font-size: 0.65rem;
+  background: var(--primary);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+/* ── Rules card ────────────────────────────── */
+.rules-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.rules-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.rules-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rules-list li {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+/* ── Error / shared ────────────────────────── */
+.error-msg {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: 6px;
+}

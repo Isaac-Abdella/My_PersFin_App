@@ -40,6 +40,9 @@ const userSchema = new mongoose_1.Schema({
     passwordHash: { type: String, required: true },
     firstName: String,
     lastName: String,
+    province: { type: String, default: "ON" },
+    resetToken: String,
+    resetTokenExpires: Date,
     createdAt: { type: Date, default: Date.now }
 });
 exports.User = mongoose_1.default.model("User", userSchema);

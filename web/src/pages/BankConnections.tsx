@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../api";
+import './BankConnections.css';
 
 interface PlaidAccount {
   plaidAccountId: string;
@@ -183,7 +184,7 @@ export default function BankConnections() {
 
   if (loading) {
     return (
-      <div className="page-container">
+      <div className="bank-connections-container">
         <h1>Bank Connections</h1>
         <p>Loading...</p>
       </div>
@@ -191,15 +192,15 @@ export default function BankConnections() {
   }
 
   return (
-    <div className="page-container">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+    <div className="bank-connections-container">
+      <div className="bank-page-header">
         <div>
-          <h1 style={{ margin: 0 }}>Bank Connections</h1>
-          <p style={{ margin: "4px 0 0", color: "var(--text-secondary, #666)", fontSize: 14 }}>
+          <h1>Bank Connections</h1>
+          <p className="bank-page-subtitle">
             Connect your Canadian bank accounts to automatically import transactions
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="bank-header-actions">
           {connections.length > 0 && (
             <button
               className="btn btn-secondary"
@@ -220,87 +221,34 @@ export default function BankConnections() {
         </div>
       </div>
 
-      {/* Environment badge */}
       {plaidEnv === "sandbox" && (
-        <div style={{
-          background: "var(--warning-bg, #fff8e1)",
-          border: "1px solid var(--warning-border, #ffd54f)",
-          borderRadius: 8,
-          padding: "10px 16px",
-          marginBottom: 20,
-          fontSize: 14,
-          color: "var(--warning-text, #5d4037)",
-        }}>
+        <div className="sandbox-notice">
           <strong>Sandbox Mode</strong> — Use Plaid test credentials (username: <code>user_good</code>, password: <code>pass_good</code>) to connect a simulated bank.
         </div>
       )}
 
-      {/* Plaid not configured warning */}
       {!plaidConfigured && (
-        <div style={{
-          background: "var(--error-bg, #ffebee)",
-          border: "1px solid var(--error-border, #ef9a9a)",
-          borderRadius: 8,
-          padding: "12px 16px",
-          marginBottom: 20,
-          fontSize: 14,
-          color: "var(--error-text, #b71c1c)",
-        }}>
+        <div className="plaid-error-notice">
           <strong>Plaid not configured.</strong> Add <code>PLAID_CLIENT_ID</code> and <code>PLAID_SECRET</code> to <code>server/.env</code> to enable bank connections.
         </div>
       )}
 
-      {/* Error message */}
       {error && (
-        <div style={{
-          background: "var(--error-bg, #ffebee)",
-          border: "1px solid var(--error-border, #ef9a9a)",
-          borderRadius: 8,
-          padding: "12px 16px",
-          marginBottom: 20,
-          fontSize: 14,
-          color: "var(--error-text, #b71c1c)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}>
+        <div className="error-notice">
           <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1 }}
-          >
-            ×
-          </button>
+          <button className="error-notice-dismiss" onClick={() => setError(null)}>×</button>
         </div>
       )}
 
-      {/* Success message */}
       {successMsg && (
-        <div style={{
-          background: "var(--success-bg, #e8f5e9)",
-          border: "1px solid var(--success-border, #a5d6a7)",
-          borderRadius: 8,
-          padding: "12px 16px",
-          marginBottom: 20,
-          fontSize: 14,
-          color: "var(--success-text, #1b5e20)",
-        }}>
-          {successMsg}
-        </div>
+        <div className="success-notice">{successMsg}</div>
       )}
 
-      {/* Empty state */}
       {connections.length === 0 && (
-        <div style={{
-          textAlign: "center",
-          padding: "60px 20px",
-          border: "2px dashed var(--border, #e0e0e0)",
-          borderRadius: 12,
-          color: "var(--text-secondary, #666)",
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🏦</div>
-          <h3 style={{ margin: "0 0 8px" }}>No banks connected</h3>
-          <p style={{ margin: "0 0 24px" }}>Connect your bank to automatically import and categorize transactions.</p>
+        <div className="bank-empty-state">
+          <div className="bank-empty-icon">🏦</div>
+          <h3>No banks connected</h3>
+          <p>Connect your bank to automatically import and categorize transactions.</p>
           <button
             className="btn btn-primary"
             onClick={handleConnect}
@@ -311,46 +259,27 @@ export default function BankConnections() {
         </div>
       )}
 
-      {/* Connection cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="conn-cards-list">
         {connections.map((conn) => (
-          <div
-            key={conn._id}
-            style={{
-              background: "var(--card-bg, #fff)",
-              border: "1px solid var(--border, #e0e0e0)",
-              borderRadius: 12,
-              padding: 20,
-            }}
-          >
-            {/* Card header */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+          <div key={conn._id} className="conn-card">
+            <div className="conn-card-header">
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <h3 style={{ margin: 0, fontSize: 18 }}>{conn.institutionName}</h3>
-                  <span style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: "2px 8px",
-                    borderRadius: 20,
-                    textTransform: "uppercase",
-                    background: conn.status === "active" ? "var(--success-bg, #e8f5e9)" : "var(--error-bg, #ffebee)",
-                    color: conn.status === "active" ? "var(--success-text, #2e7d32)" : "var(--error-text, #c62828)",
-                  }}>
+                <div className="conn-card-title-row">
+                  <h3>{conn.institutionName}</h3>
+                  <span className={`conn-status-badge status-${conn.status}`}>
                     {conn.status}
                   </span>
                 </div>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-secondary, #666)" }}>
+                <p className="conn-card-meta">
                   Connected {formatDate(conn.createdAt)} · {conn.transactionsSynced} transactions synced
                 </p>
-                <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--text-secondary, #666)" }}>
+                <p className="conn-card-meta">
                   Last synced: {formatDate(conn.lastSyncedAt)}
                 </p>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div className="conn-card-actions">
                 <button
                   className="btn btn-secondary"
-                  style={{ fontSize: 13, padding: "6px 14px" }}
                   onClick={() => handleSync(conn._id)}
                   disabled={syncingId === conn._id}
                 >
@@ -358,7 +287,6 @@ export default function BankConnections() {
                 </button>
                 <button
                   className="btn btn-danger"
-                  style={{ fontSize: 13, padding: "6px 14px" }}
                   onClick={() => handleRemove(conn._id, conn.institutionName)}
                   disabled={removingId === conn._id}
                 >
@@ -367,34 +295,27 @@ export default function BankConnections() {
               </div>
             </div>
 
-            {/* Accounts table */}
             {conn.accounts.length > 0 && (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div className="conn-accounts-wrap">
+                <table className="conn-accounts-table">
                   <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border, #e0e0e0)" }}>
-                      <th style={{ textAlign: "left", padding: "6px 10px", color: "var(--text-secondary, #666)", fontWeight: 600 }}>Account</th>
-                      <th style={{ textAlign: "left", padding: "6px 10px", color: "var(--text-secondary, #666)", fontWeight: 600 }}>Type</th>
-                      <th style={{ textAlign: "right", padding: "6px 10px", color: "var(--text-secondary, #666)", fontWeight: 600 }}>Current Balance</th>
-                      <th style={{ textAlign: "right", padding: "6px 10px", color: "var(--text-secondary, #666)", fontWeight: 600 }}>Available</th>
+                    <tr>
+                      <th>Account</th>
+                      <th>Type</th>
+                      <th className="right">Current Balance</th>
+                      <th className="right">Available</th>
                     </tr>
                   </thead>
                   <tbody>
                     {conn.accounts.map((acct) => (
-                      <tr key={acct.plaidAccountId} style={{ borderBottom: "1px solid var(--border-light, #f5f5f5)" }}>
-                        <td style={{ padding: "8px 10px" }}>
+                      <tr key={acct.plaidAccountId}>
+                        <td>
                           {acct.officialName ?? acct.name}
-                          {acct.mask && <span style={{ color: "var(--text-secondary, #999)", marginLeft: 6 }}>••••{acct.mask}</span>}
+                          {acct.mask && <span className="conn-acct-mask">••••{acct.mask}</span>}
                         </td>
-                        <td style={{ padding: "8px 10px", color: "var(--text-secondary, #666)", textTransform: "capitalize" }}>
-                          {acct.subtype}
-                        </td>
-                        <td style={{ padding: "8px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                          {formatBalance(acct.currentBalance)}
-                        </td>
-                        <td style={{ padding: "8px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary, #666)" }}>
-                          {formatBalance(acct.availableBalance)}
-                        </td>
+                        <td className="conn-acct-subtype">{acct.subtype}</td>
+                        <td className="right">{formatBalance(acct.currentBalance)}</td>
+                        <td className="right conn-acct-avail">{formatBalance(acct.availableBalance)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -402,16 +323,8 @@ export default function BankConnections() {
               </div>
             )}
 
-            {/* Error code display */}
             {conn.status === "error" && conn.errorCode && (
-              <div style={{
-                marginTop: 12,
-                padding: "8px 12px",
-                background: "var(--error-bg, #ffebee)",
-                borderRadius: 6,
-                fontSize: 13,
-                color: "var(--error-text, #c62828)",
-              }}>
+              <div className="conn-error-inline">
                 Error: {conn.errorCode} — please reconnect this bank
               </div>
             )}
@@ -419,17 +332,9 @@ export default function BankConnections() {
         ))}
       </div>
 
-      {/* How it works */}
-      <div style={{
-        marginTop: 32,
-        padding: 20,
-        background: "var(--surface, #f9f9f9)",
-        borderRadius: 12,
-        fontSize: 14,
-        color: "var(--text-secondary, #555)",
-      }}>
-        <h4 style={{ margin: "0 0 10px", fontSize: 15, color: "var(--text-primary, #333)" }}>How bank connections work</h4>
-        <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+      <div className="how-it-works-card">
+        <h4>How bank connections work</h4>
+        <ul>
           <li>Connections use <strong>Plaid</strong>, a secure bank data aggregator used by major financial apps</li>
           <li>Your banking credentials are entered directly on your bank's secure page — they are never stored here</li>
           <li>Transactions are synced automatically; click <strong>Sync</strong> to fetch the latest activity</li>

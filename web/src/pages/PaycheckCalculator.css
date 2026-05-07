@@ -1,0 +1,255 @@
+/* PaycheckCalculator page */
+
+.paycheck-container {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.paycheck-container h1 {
+  font-size: 0.92rem;
+  color: var(--text);
+  margin: 0 0 6px 0;
+}
+
+.paycheck-intro {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 0 0 12px 0;
+  max-width: 660px;
+}
+
+/* ── Section card ──────────────────────────── */
+.section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.section-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+/* ── Mode toggle ───────────────────────────── */
+.mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mode-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+
+.mode-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* ── Input grid ────────────────────────────── */
+.paycheck-input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ── Optional deductions ───────────────────── */
+.optional-deductions {
+  margin-bottom: 10px;
+}
+
+.optional-deductions summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--primary);
+  user-select: none;
+  list-style: none;
+  padding: 4px 0;
+}
+
+.optional-deductions summary::-webkit-details-marker {
+  display: none;
+}
+
+.deductions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ── Results summary cards ─────────────────── */
+.paycheck-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.stat-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.stat-sub {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+/* ── Progress bar ──────────────────────────── */
+.progress-track {
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* ── Pay stub table ────────────────────────── */
+.paystub-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.paystub-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.paystub-header h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.paystub-header p {
+  margin: 3px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-light);
+}
+
+.paystub-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.paystub-table th {
+  background: var(--primary);
+  color: white;
+  padding: 6px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.paystub-table td {
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.paystub-table .td-sub {
+  padding-left: 20px;
+}
+
+.paystub-table .td-pct {
+  font-size: 0.72rem;
+  color: var(--text-light);
+}
+
+.paystub-table .row-even td { background: var(--bg-card); }
+.paystub-table .row-odd td  { background: var(--bg); }
+
+.separator-row td {
+  background: var(--border) !important;
+  height: 1px;
+  padding: 0;
+}
+
+/* ── Notes grid ────────────────────────────── */
+.notes-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.notes-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  font-size: 0.72rem;
+}
+
+.note-card {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.note-card-title {
+  font-weight: 700;
+  font-size: 0.72rem;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.note-card-item {
+  color: var(--text-light);
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+/* ── Error ─────────────────────────────────── */
+.error-msg {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
+/* ── Responsive ────────────────────────────── */
+@media (max-width: 600px) {
+  .paycheck-input-grid { grid-template-columns: 1fr; }
+}

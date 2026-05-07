@@ -1,0 +1,327 @@
+/* PortfolioRebalancing page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.rebalancing-container {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.rebalancing-header { margin-bottom: 16px; }
+
+.rebalancing-header h1 {
+  font-size: 0.92rem;
+  margin: 0;
+  color: var(--text);
+}
+
+.rebalancing-header p {
+  font-size: 0.72rem;
+  margin: 4px 0 0 0;
+  color: var(--text-light);
+  max-width: 680px;
+}
+
+/* ── Two-panel input grid ──────────────────── */
+.rebalancing-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+
+.section-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Holding rows ──────────────────────────── */
+.holding-row {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
+  background: var(--bg);
+}
+
+.holding-inputs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+
+.holding-inputs input {
+  padding: 0.32rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.holding-inputs input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.holding-inputs input.name-input { flex: 2; }
+.holding-inputs input.value-input { flex: 1; }
+
+.holding-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.holding-selects {
+  display: flex;
+  gap: 6px;
+}
+
+.holding-selects select {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.holding-selects select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* ── Target allocation ─────────────────────── */
+.target-sum-info {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+
+.target-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.target-row label {
+  width: 145px;
+  font-size: 0.78rem;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.target-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--primary);
+}
+
+.target-row input[type="number"] {
+  width: 52px;
+  padding: 0.28rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  text-align: center;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.target-row input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.target-row .pct-symbol {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  flex-shrink: 0;
+}
+
+.drift-threshold {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-light);
+}
+
+.drift-threshold input {
+  width: 48px;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+/* ── Results ────────────────────────────────── */
+.results-section { margin-top: 16px; }
+
+.results-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: var(--shadow);
+}
+
+.stat-card .stat-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card .stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.stat-card .stat-sub {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-top: 3px;
+}
+
+/* ── Tables ─────────────────────────────────── */
+.table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+
+.table-card-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-card-header h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.inv-table th {
+  background: var(--primary);
+  color: white;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inv-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.inv-table tr:last-child td { border-bottom: none; }
+.inv-table tr.row-alt { background: var(--bg); }
+.inv-table tr.row-drifted { background: #fef9c3; }
+
+[data-theme="dark"] .inv-table tr.row-drifted { background: rgba(217,119,6,0.15); }
+
+.drift-badge {
+  margin-left: 6px;
+  font-size: 0.65rem;
+  background: #d97706;
+  color: white;
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.action-buy { color: var(--success); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; }
+.action-sell { color: var(--danger); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; }
+.action-hold { color: var(--text-light); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; }
+
+/* ── Tax advice ─────────────────────────────── */
+.tax-advice-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.tax-advice-box h3 {
+  margin: 0 0 4px 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tax-advice-box p {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.tax-advice-item {
+  font-size: 0.75rem;
+  margin-bottom: 5px;
+  color: var(--text);
+}
+
+.tax-advice-item .note {
+  color: var(--text-light);
+  margin-left: 4px;
+}
+
+/* ── Error ──────────────────────────────────── */
+.error-msg {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .rebalancing-inputs { grid-template-columns: 1fr; }
+  .results-summary { grid-template-columns: 1fr; }
+  .target-row label { width: 110px; }
+}

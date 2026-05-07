@@ -11,6 +11,7 @@ import {
   fmtCAD,
   COLORS as C,
 } from "../components/charts";
+import './Dashboard.css';
 
 interface FinancialSnapshot {
   netWorth: number;

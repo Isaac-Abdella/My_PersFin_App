@@ -1,3 +1,6 @@
+/* NetWorth page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
 .net-worth-container {
   padding: 0;
   max-width: 1050px;
@@ -13,7 +16,7 @@
 
 .net-worth-header h1 {
   font-size: 0.92rem;
-  color: #111827;
+  color: var(--text);
   margin: 0;
 }
 
@@ -25,16 +28,16 @@
 }
 
 .summary-card {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .summary-label {
   font-size: 0.68rem;
-  color: #666;
+  color: var(--text-light);
   margin-bottom: 3px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -43,7 +46,7 @@
 .summary-value {
   font-size: 0.92rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text);
   margin-bottom: 0.15rem;
 }
 
@@ -53,7 +56,7 @@
 }
 
 .net-worth-card {
-  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  background: var(--primary);
   color: white;
   border: none;
 }
@@ -78,26 +81,26 @@
 }
 
 .chart-card {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .chart-card h3 {
   margin: 0 0 6px 0;
-  color: #111827;
+  color: var(--text);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
 .trends-card {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
   margin-bottom: 10px;
 }
 
@@ -110,17 +113,18 @@
 
 .trends-header h3 {
   margin: 0;
-  color: #111827;
+  color: var(--text);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
 .trends-header select {
   padding: 0.25rem 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
-  background: white;
+  background: var(--bg-card);
+  color: var(--text);
   font-size: 0.72rem;
 }
 
@@ -131,16 +135,16 @@
 }
 
 .breakdown-column {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .breakdown-column h3 {
   margin: 0 0 6px 0;
-  color: #111827;
+  color: var(--text);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -155,47 +159,35 @@
   display: flex;
   justify-content: space-between;
   padding: 0.4rem 0.5rem;
-  background: #F9FAFB;
+  background: var(--bg);
   border-radius: 0.5rem;
   font-size: 0.72rem;
 }
 
 .breakdown-item.total {
-  background: #E5E7EB;
+  background: var(--border);
   font-weight: 600;
   margin-top: 0.5rem;
 }
 
 .breakdown-label {
-  color: #6B7280;
+  color: var(--text-light);
   text-transform: capitalize;
 }
 
 .breakdown-value {
-  color: #111827;
+  color: var(--text);
   font-weight: 500;
 }
 
 @media (max-width: 768px) {
-  .net-worth-container {
-    padding: 1rem;
-  }
-
   .net-worth-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
 
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .charts-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .breakdown-section {
-    grid-template-columns: 1fr;
-  }
+  .summary-grid { grid-template-columns: 1fr; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .breakdown-section { grid-template-columns: 1fr; }
 }

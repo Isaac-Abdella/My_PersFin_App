@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import EmptyState from "../components/EmptyState";
+import './RecurringTransactions.css';
 
 interface Recurring {
   _id: string;
@@ -175,7 +176,6 @@ export default function RecurringTransactions() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "Failed to add");
       }
-      // Mark as tracked in local detected list
       setDetected((prev) =>
         prev ? prev.map((d) => d.name === p.name ? { ...d, alreadyTracked: true } : d) : prev
       );
@@ -218,138 +218,87 @@ export default function RecurringTransactions() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
+    <div className="recurring-container">
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+      <div className="rt-header">
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>Recurring Transactions</h1>
-          <p style={{ color: "var(--text-light)", fontSize: 14, margin: "4px 0 0" }}>
-            Monthly net: <strong style={{ color: totalMonthly >= 0 ? "#059669" : "#dc2626" }}>{CAD(totalMonthly)}</strong>
+          <h1>Recurring Transactions</h1>
+          <p className="rt-header-subtitle">
+            Monthly net: <strong className={totalMonthly >= 0 ? "positive" : "negative"}>{CAD(totalMonthly)}</strong>
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={detect}
-            disabled={detecting}
-            style={{ padding: "9px 18px", borderRadius: 8, background: "var(--bg-card)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}
-          >
+        <div className="rt-header-actions">
+          <button className="rt-detect-btn" onClick={detect} disabled={detecting}>
             {detecting ? "Detecting…" : "🔍 Detect Recurring"}
           </button>
-          <button onClick={openNew} style={{ padding: "9px 18px", borderRadius: 8, background: "var(--primary)", color: "white", border: "none", fontSize: 14, cursor: "pointer", fontWeight: 500 }}>
-            + Add Recurring
-          </button>
+          <button className="btn-primary" onClick={openNew}>+ Add Recurring</button>
         </div>
       </div>
 
       {/* Detection panel */}
       {(detected !== null || detecting || detectError) && (
-        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div className="rt-detect-panel">
+          <div className="rt-detect-header">
             <div>
-              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
-                {detecting ? "Scanning transaction history…" : detectError ? "Detection failed" : `Detected Patterns`}
+              <h3>
+                {detecting ? "Scanning transaction history…" : detectError ? "Detection failed" : "Detected Patterns"}
               </h3>
               {!detecting && !detectError && detected !== null && (
-                <p style={{ fontSize: 13, color: "var(--text-light)", margin: "3px 0 0" }}>
+                <p className="rt-detect-subtitle">
                   {visibleDetected.length === 0
                     ? "No untracked patterns found — you're all caught up."
                     : `${newCount} new pattern${newCount !== 1 ? "s" : ""} found from your transaction history`}
                 </p>
               )}
-              {detectError && (
-                <p style={{ fontSize: 13, color: "#dc2626", margin: "3px 0 0" }}>{detectError}</p>
-              )}
+              {detectError && <p className="rt-detect-error">{detectError}</p>}
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="rt-detect-actions">
               {!detecting && !detectError && newCount > 0 && (
-                <button
-                  onClick={addAllDetected}
-                  disabled={addingAll}
-                  style={{ padding: "6px 14px", borderRadius: 7, background: "var(--primary)", color: "white", border: "none", fontSize: 13, cursor: "pointer", fontWeight: 500 }}
-                >
+                <button className="btn-primary btn-sm" onClick={addAllDetected} disabled={addingAll}>
                   {addingAll ? "Adding…" : `Add All ${newCount} New`}
                 </button>
               )}
-              <button
-                onClick={() => { setDetected(null); setDetectError(null); }}
-                style={{ padding: "6px 12px", borderRadius: 7, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13, cursor: "pointer" }}
-              >
+              <button className="btn-secondary btn-sm" onClick={() => { setDetected(null); setDetectError(null); }}>
                 Close
               </button>
             </div>
           </div>
 
           {detecting && (
-            <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-light)", fontSize: 14 }}>
-              Analyzing transactions for recurring patterns…
-            </div>
+            <div className="rt-loading">Analyzing transactions for recurring patterns…</div>
           )}
 
           {!detecting && visibleDetected.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="rt-patterns-list">
               {visibleDetected.map((p) => {
                 const conf = confidenceColor(p.confidence);
                 return (
-                  <div
-                    key={p.name}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr auto auto auto auto auto",
-                      gap: 12,
-                      alignItems: "center",
-                      padding: "10px 14px",
-                      borderRadius: 8,
-                      background: p.alreadyTracked ? "var(--bg)" : "var(--bg)",
-                      border: "1px solid var(--border)",
-                      opacity: p.alreadyTracked ? 0.6 : 1,
-                    }}
-                  >
-                    {/* Name + meta */}
+                  <div key={p.name} className={`rt-pattern-row${p.alreadyTracked ? " tracked" : ""}`}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {p.name}
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--text-light)", marginTop: 2 }}>
+                      <div className="rt-pattern-name">{p.name}</div>
+                      <div className="rt-pattern-meta">
                         {p.category} · {p.occurrences} occurrences · last {formatDate(p.lastDate)}
                       </div>
                     </div>
 
-                    {/* Amount */}
-                    <div style={{ fontWeight: 700, fontSize: 14, color: p.type === "income" ? "#059669" : "#dc2626", whiteSpace: "nowrap" }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.82rem", color: p.type === "income" ? "var(--success)" : "var(--danger)", whiteSpace: "nowrap" }}>
                       {p.type === "income" ? "+" : "-"}{CAD(p.amount)}
                     </div>
 
-                    {/* Frequency */}
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "#eff6ff", color: "#2563eb", fontWeight: 600, textTransform: "capitalize", whiteSpace: "nowrap" }}>
-                      {p.frequency}
-                    </span>
+                    <span className="rt-freq-badge">{p.frequency}</span>
 
-                    {/* Confidence */}
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: conf.bg, color: conf.text, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: "0.68rem", padding: "2px 8px", borderRadius: 10, background: conf.bg, color: conf.text, fontWeight: 600, whiteSpace: "nowrap" }}>
                       {conf.label} {Math.round(p.confidence * 100)}%
                     </span>
 
-                    {/* Add / Already tracked */}
                     {p.alreadyTracked ? (
-                      <span style={{ fontSize: 12, color: "#059669", fontWeight: 500, whiteSpace: "nowrap" }}>✓ Tracked</span>
+                      <span className="rt-tracked-badge">✓ Tracked</span>
                     ) : (
-                      <button
-                        onClick={() => addDetected(p)}
-                        style={{ padding: "4px 12px", borderRadius: 6, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", fontSize: 12, cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap" }}
-                      >
-                        + Add
-                      </button>
+                      <button className="rt-add-btn" onClick={() => addDetected(p)}>+ Add</button>
                     )}
 
-                    {/* Dismiss */}
-                    <button
-                      onClick={() => dismissDetected(p.name)}
-                      title="Dismiss"
-                      style={{ padding: "4px 8px", borderRadius: 6, background: "var(--bg)", color: "var(--text-light)", border: "1px solid var(--border)", fontSize: 13, cursor: "pointer", lineHeight: 1 }}
-                    >
-                      ×
-                    </button>
+                    <button className="rt-dismiss-btn" onClick={() => dismissDetected(p.name)} title="Dismiss">×</button>
                   </div>
                 );
               })}
@@ -360,62 +309,85 @@ export default function RecurringTransactions() {
 
       {/* Add / Edit form */}
       {showForm && (
-        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{editId ? "Edit" : "New"} Recurring Transaction</h3>
+        <div className="rt-form-card">
+          <h3>{editId ? "Edit" : "New"} Recurring Transaction</h3>
           <form onSubmit={save}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            <div className="rt-form-grid">
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-light)", display: "block", marginBottom: 4 }}>Name</label>
+                <label className="rt-form-label">Name</label>
                 <input
                   type="text"
                   required
+                  className="rt-form-field"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 14, margin: 0 }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-light)", display: "block", marginBottom: 4 }}>Amount</label>
-                <input type="number" min={0} step={0.01} required value={form.amount}
+                <label className="rt-form-label">Amount</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  required
+                  className="rt-form-field"
+                  value={form.amount}
                   onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 14, margin: 0 }} />
+                />
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-light)", display: "block", marginBottom: 4 }}>Type</label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 14, margin: 0 }}>
+                <label className="rt-form-label">Type</label>
+                <select
+                  className="rt-form-field"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                >
                   <option value="expense">Expense</option>
                   <option value="income">Income</option>
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-light)", display: "block", marginBottom: 4 }}>Category</label>
-                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 14, margin: 0 }}>
+                <label className="rt-form-label">Category</label>
+                <select
+                  className="rt-form-field"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                >
                   {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-light)", display: "block", marginBottom: 4 }}>Frequency</label>
-                <select value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 14, margin: 0 }}>
+                <label className="rt-form-label">Frequency</label>
+                <select
+                  className="rt-form-field"
+                  value={form.frequency}
+                  onChange={(e) => setForm({ ...form, frequency: e.target.value })}
+                >
                   {FREQUENCIES.map((f) => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-light)", display: "block", marginBottom: 4 }}>Next Due Date</label>
-                <input type="date" required value={form.nextDueDate}
+                <label className="rt-form-label">Next Due Date</label>
+                <input
+                  type="date"
+                  required
+                  className="rt-form-field"
+                  value={form.nextDueDate}
                   onChange={(e) => setForm({ ...form, nextDueDate: e.target.value })}
-                  style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text)", fontSize: 14, margin: 0 }} />
+                />
               </div>
             </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 14, cursor: "pointer" }}>
-              <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+            <label className="rt-active-label">
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              />
               Active
             </label>
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <button type="submit" style={{ padding: "8px 20px", borderRadius: 8, background: "var(--primary)", color: "white", border: "none", fontSize: 14, cursor: "pointer" }}>Save</button>
-              <button type="button" onClick={closeForm} style={{ padding: "8px 16px", borderRadius: 8, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer" }}>Cancel</button>
+            <div className="rt-form-actions">
+              <button type="submit" className="btn-primary">Save</button>
+              <button type="button" className="btn-secondary" onClick={closeForm}>Cancel</button>
             </div>
           </form>
         </div>
@@ -423,20 +395,25 @@ export default function RecurringTransactions() {
 
       {/* Recurring list */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: 48, color: "var(--text-light)" }}>Loading…</div>
+        <div className="rt-loading">Loading…</div>
       ) : loadError ? (
-        <div style={{ textAlign: "center", padding: 48, color: "#dc2626" }}>
-          {loadError} — <button onClick={load} style={{ color: "var(--primary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Retry</button>
+        <div className="rt-error-state">
+          {loadError} — <button className="rt-retry-btn" onClick={load}>Retry</button>
         </div>
       ) : items.length === 0 ? (
-        <EmptyState icon="🔁" title="No recurring transactions" description="Add bills, subscriptions, and income that repeat regularly, or use Detect Recurring to find them automatically." action={{ label: "+ Add Recurring", onClick: openNew }} />
+        <EmptyState
+          icon="🔁"
+          title="No recurring transactions"
+          description="Add bills, subscriptions, and income that repeat regularly, or use Detect Recurring to find them automatically."
+          action={{ label: "+ Add Recurring", onClick: openNew }}
+        />
       ) : (
-        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "var(--bg)" }}>
+        <div className="rt-table-card">
+          <table className="rt-table">
+            <thead>
               <tr>
                 {["Name", "Amount", "Type", "Category", "Frequency", "Next Due", "Status", ""].map((h) => (
-                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 12, color: "var(--text-light)", fontWeight: 600, borderBottom: "1px solid var(--border)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
+                  <th key={h}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -448,42 +425,38 @@ export default function RecurringTransactions() {
                 const overdue = daysUntil < 0;
                 const soon = daysUntil >= 0 && daysUntil <= 3;
                 return (
-                  <tr key={r._id} style={{ borderBottom: "1px solid var(--border)", opacity: r.isActive ? 1 : 0.5 }}>
-                    <td style={{ padding: "10px 14px", fontWeight: 500, fontSize: 14 }}>{r.name}</td>
-                    <td style={{ padding: "10px 14px", fontWeight: 600, color: r.type === "income" ? "#059669" : "#dc2626" }}>
+                  <tr key={r._id} className={r.isActive ? "" : "rt-row-inactive"}>
+                    <td className="td-name">{r.name}</td>
+                    <td style={{ fontWeight: 600, color: r.type === "income" ? "var(--success)" : "var(--danger)" }}>
                       {r.type === "income" ? "+" : "-"}{CAD(r.amount)}
                     </td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: r.type === "income" ? "#d1fae5" : "#fee2e2", color: r.type === "income" ? "#065f46" : "#991b1b" }}>
-                        {r.type}
-                      </span>
+                    <td>
+                      <span className={`rt-type-badge ${r.type}`}>{r.type}</span>
                     </td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-light)" }}>{r.category}</td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, textTransform: "capitalize" }}>{r.frequency}</td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, color: overdue ? "#dc2626" : soon ? "#d97706" : "var(--text)" }}>
+                    <td className="td-category">{r.category}</td>
+                    <td className="td-freq">{r.frequency}</td>
+                    <td className={overdue ? "rt-date-overdue" : soon ? "rt-date-soon" : ""}>
                       {formatDate(r.nextDueDate)}
-                      {overdue && <span style={{ fontSize: 10, marginLeft: 4, color: "#dc2626" }}>OVERDUE</span>}
-                      {soon && !overdue && <span style={{ fontSize: 10, marginLeft: 4, color: "#d97706" }}>SOON</span>}
+                      {overdue && <span className="rt-date-tag">OVERDUE</span>}
+                      {soon && !overdue && <span className="rt-date-tag">SOON</span>}
                     </td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: r.isActive ? "#d1fae5" : "#f3f4f6", color: r.isActive ? "#065f46" : "#6b7280" }}>
+                    <td>
+                      <span className={`rt-status-badge ${r.isActive ? "active" : "paused"}`}>
                         {r.isActive ? "Active" : "Paused"}
                       </span>
                     </td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => postNow(r._id)} disabled={posting === r._id} title="Post now as a transaction"
-                          style={{ padding: "4px 10px", borderRadius: 6, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", fontSize: 12, cursor: "pointer" }}>
+                    <td>
+                      <div className="rt-actions">
+                        <button
+                          className="rt-btn-post"
+                          onClick={() => postNow(r._id)}
+                          disabled={posting === r._id}
+                          title="Post now as a transaction"
+                        >
                           {posting === r._id ? "…" : "Post"}
                         </button>
-                        <button onClick={() => openEdit(r)}
-                          style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 12, cursor: "pointer" }}>
-                          Edit
-                        </button>
-                        <button onClick={() => remove(r._id)}
-                          style={{ padding: "4px 10px", borderRadius: 6, background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", fontSize: 12, cursor: "pointer" }}>
-                          Del
-                        </button>
+                        <button className="rt-btn-edit" onClick={() => openEdit(r)}>Edit</button>
+                        <button className="rt-btn-del" onClick={() => remove(r._id)}>Del</button>
                       </div>
                     </td>
                   </tr>

@@ -1,0 +1,312 @@
+/* RRSPvsTFSA page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.rrsp-container {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.rrsp-container h1 {
+  font-size: 0.92rem;
+  color: var(--text);
+  margin: 0 0 6px 0;
+}
+
+.rrsp-intro {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 0 0 12px 0;
+  max-width: 680px;
+}
+
+/* ── Section card ──────────────────────────── */
+.section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.section-card h2 {
+  margin: 0 0 10px 0;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.section-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+/* ── Inputs grid ───────────────────────────── */
+.rrsp-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.rrsp-calculate-btn {
+  min-width: 180px;
+  margin-top: 4px;
+}
+
+/* ── Recommendation banner ─────────────────── */
+.rec-banner {
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border-width: 2px;
+  border-style: solid;
+}
+
+.rec-banner-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rec-banner-icon {
+  font-size: 1.2rem;
+}
+
+.rec-banner-label {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.rec-banner-strength {
+  margin-left: 8px;
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.rec-banner-reason {
+  font-size: 0.78rem;
+  margin-top: 3px;
+}
+
+.rec-banner-advantage {
+  margin-top: 8px;
+  font-size: 0.78rem;
+}
+
+/* ── OAS warning ───────────────────────────── */
+.oas-warning {
+  background: #fef9c3;
+  border: 1px solid #eab308;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  color: #78350f;
+}
+
+[data-theme="dark"] .oas-warning {
+  background: rgba(146, 64, 14, 0.12);
+  border-color: rgba(234, 179, 8, 0.3);
+  color: #fde68a;
+}
+
+/* ── Rate cards ────────────────────────────── */
+.rate-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rate-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.rate-card-title {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-bottom: 2px;
+}
+
+.rate-card-sub {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+
+.rate-card-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.rate-card-breakdown {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* ── Comparison cards ──────────────────────── */
+.comparison-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.comparison-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.comparison-card.winner {
+  border-color: #22c55e;
+}
+
+.comparison-header {
+  background: var(--bg);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.comparison-header.winner-header {
+  background: #f0fdf4;
+}
+
+[data-theme="dark"] .comparison-header.winner-header {
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.comparison-header-icon {
+  font-size: 1.1rem;
+}
+
+.comparison-header-title {
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.winner-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  background: #22c55e;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.comparison-body {
+  padding: 6px 12px;
+}
+
+.comparison-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  font-size: 0.78rem;
+}
+
+.comparison-row:not(.total-row) {
+  border-bottom: 1px solid var(--border);
+}
+
+.comparison-row.total-row {
+  border-top: 2px solid var(--border);
+  margin-top: 2px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.comparison-row-label {
+  color: var(--text-light);
+}
+
+/* ── Chart card ────────────────────────────── */
+.chart-card {
+  margin-bottom: 10px;
+}
+
+.chart-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin: 0 0 8px 0;
+}
+
+/* ── Tips grid ─────────────────────────────── */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.tip-card {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.tip-card-icon {
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.tip-card-title {
+  font-weight: 700;
+  font-size: 0.78rem;
+  margin-bottom: 3px;
+  color: var(--text);
+}
+
+.tip-card-body {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+/* ── Slider hint ───────────────────────────── */
+.form-group small,
+.form-hint {
+  font-size: 0.65rem;
+  color: var(--text-light);
+  margin-top: 3px;
+}
+
+/* ── Error / next-year info ────────────────── */
+.error-msg {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
+.next-year-banner {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  color: #1e40af;
+}
+
+[data-theme="dark"] .next-year-banner {
+  background: rgba(30, 64, 175, 0.12);
+  border-color: rgba(147, 197, 253, 0.3);
+  color: #93c5fd;
+}
+
+/* ── Responsive ────────────────────────────── */
+@media (max-width: 768px) {
+  .rate-cards-grid,
+  .comparison-cards-grid { grid-template-columns: 1fr; }
+  .rrsp-inputs-grid { grid-template-columns: 1fr; }
+}

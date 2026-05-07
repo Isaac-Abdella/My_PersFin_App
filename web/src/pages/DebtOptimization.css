@@ -1,47 +1,47 @@
+/* DebtOptimization page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
 .debt-optimization-container {
   max-width: 1050px;
   margin: 0 auto;
-  padding: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .debt-header {
-  text-align: center;
-  color: white;
   margin-bottom: 16px;
 }
 
 .debt-header h1 {
   font-size: 0.92rem;
   margin: 0;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  color: var(--text);
 }
 
 .debt-header p {
   font-size: 0.72rem;
   margin: 4px 0 0 0;
-  opacity: 0.9;
+  color: var(--text-light);
 }
 
 .debt-section {
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 10px;
   margin-bottom: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .debt-section h2 {
-  color: #333;
+  color: var(--text);
   font-size: 0.82rem;
   margin-top: 0;
   margin-bottom: 8px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid var(--border);
   padding-bottom: 5px;
 }
 
 .debt-section h3 {
-  color: #555;
+  color: var(--text);
   font-size: 0.75rem;
   margin-top: 8px;
   margin-bottom: 5px;
@@ -49,7 +49,7 @@
 
 .no-debts {
   text-align: center;
-  color: #999;
+  color: var(--text-light);
   padding: 16px 10px;
   font-size: 0.78rem;
 }
@@ -61,25 +61,23 @@
 }
 
 .debt-card {
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   border-radius: 8px;
   padding: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  background: var(--bg-card);
 }
 
-.debt-card input[type="checkbox"] {
-  display: none;
-}
+.debt-card input[type="checkbox"] { display: none; }
 
 .debt-card:hover {
-  border-color: #667eea;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .debt-card input[type="checkbox"]:checked + label {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  border-color: #667eea;
+  background: var(--bg);
 }
 
 .debt-card label {
@@ -96,12 +94,12 @@
 }
 
 .debt-info strong {
-  color: #333;
+  color: var(--text);
   font-size: 0.78rem;
 }
 
 .debt-type {
-  background: #667eea;
+  background: var(--primary);
   color: white;
   padding: 1px 6px;
   border-radius: 12px;
@@ -132,16 +130,17 @@
 }
 
 .strategy-option {
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   border-radius: 8px;
   padding: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  background: var(--bg-card);
 }
 
 .strategy-option:hover {
-  border-color: #667eea;
-  background: #f5f5f5;
+  border-color: var(--primary);
+  background: var(--bg);
 }
 
 .strategy-option input[type="radio"] {
@@ -152,17 +151,19 @@
 .strategy-option label {
   cursor: pointer;
   display: block;
+  color: var(--text);
+  font-size: 0.78rem;
 }
 
 .strategy-option small {
-  color: #666;
+  color: var(--text-light);
   display: block;
   margin-top: 4px;
   font-size: 0.68rem;
 }
 
 .hybrid-weighting {
-  background: #f5f5f5;
+  background: var(--bg);
   padding: 10px;
   border-radius: 8px;
   margin-top: 8px;
@@ -173,6 +174,7 @@
   font-weight: bold;
   margin-bottom: 5px;
   font-size: 0.72rem;
+  color: var(--text);
 }
 
 .hybrid-weighting input[type="range"] {
@@ -182,12 +184,12 @@
 
 .hybrid-weighting span {
   display: block;
-  color: #667eea;
+  color: var(--primary);
   font-weight: bold;
 }
 
 .budget-input {
-  background: #f9f9f9;
+  background: var(--bg);
   padding: 10px;
   border-radius: 8px;
 }
@@ -196,7 +198,7 @@
   display: block;
   font-weight: bold;
   margin-bottom: 5px;
-  color: #333;
+  color: var(--text);
   font-size: 0.72rem;
 }
 
@@ -210,25 +212,27 @@
 .input-group span {
   font-size: 0.82rem;
   font-weight: bold;
-  color: #667eea;
+  color: var(--primary);
 }
 
 .input-group input[type="number"],
 .input-group input[type="text"],
 .input-group select {
   padding: 5px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.8rem;
   flex: 1;
+  background: var(--bg-card);
+  color: var(--text);
 }
 
 .input-group input[type="number"]:focus,
 .input-group input[type="text"]:focus,
 .input-group select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .extra-payment {
@@ -244,49 +248,7 @@
   justify-content: center;
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 0.32rem 0.72rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
-}
-
-.btn-secondary {
-  background: #f0f0f0;
-  color: #333;
-  border: 1px solid #ddd;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
-}
-
-.btn-primary:disabled,
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.results {
-  background: linear-gradient(135deg, #f5f5f5 0%, #fff 100%);
-}
+.results { background: var(--bg-card); }
 
 .plan-summary {
   display: grid;
@@ -296,34 +258,35 @@
 }
 
 .plan-stat {
-  background: white;
+  background: var(--bg-card);
   padding: 10px;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid var(--primary);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-left-color: var(--primary);
 }
 
 .plan-stat .label {
   display: block;
-  color: #999;
+  color: var(--text-light);
   font-size: 0.7rem;
   margin-bottom: 4px;
 }
 
 .plan-stat .value {
   display: block;
-  color: #333;
+  color: var(--text);
   font-size: 0.92rem;
   font-weight: bold;
 }
 
-.comparisons {
-  margin-top: 8px;
-}
+.comparisons { margin-top: 8px; }
 
 .comparisons h3 {
   margin-top: 0;
-  color: #333;
+  color: var(--text);
   font-size: 0.75rem;
 }
 
@@ -334,45 +297,45 @@
 }
 
 .comparison-card {
-  background: white;
+  background: var(--bg-card);
   padding: 10px;
   border-radius: 8px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   transition: all 0.3s ease;
 }
 
 .comparison-card:hover {
-  border-color: #667eea;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .comparison-card h4 {
-  color: #667eea;
+  color: var(--primary);
   margin-top: 0;
   font-size: 0.75rem;
 }
 
 .comparison-card .stat {
   margin: 4px 0;
-  color: #555;
+  color: var(--text-light);
   font-size: 0.72rem;
 }
 
 .comparison-card .stat strong {
-  color: #333;
+  color: var(--text);
   font-size: 0.78rem;
 }
 
 .savings {
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
   color: #2e7d32;
   font-size: 0.72rem;
 }
 
 .tool-subsection {
-  background: #f9f9f9;
+  background: var(--bg);
   padding: 10px;
   border-radius: 8px;
   margin-bottom: 8px;
@@ -380,12 +343,12 @@
 
 .tool-subsection h3 {
   margin-top: 0;
-  color: #333;
+  color: var(--text);
   font-size: 0.75rem;
 }
 
 .tool-subsection p {
-  color: #666;
+  color: var(--text-light);
   margin-bottom: 6px;
   font-size: 0.72rem;
 }
@@ -406,80 +369,56 @@
 .form-row label {
   font-weight: bold;
   margin-bottom: 4px;
-  color: #333;
+  color: var(--text);
   font-size: 0.72rem;
 }
 
 .form-row select {
   padding: 5px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.8rem;
   cursor: pointer;
+  background: var(--bg-card);
+  color: var(--text);
 }
 
 .tool-result {
-  background: white;
+  background: var(--bg-card);
   padding: 10px;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid var(--primary);
   margin-top: 6px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-left-color: var(--primary);
 }
 
 .tool-result .recommendation {
-  color: #555;
+  color: var(--text-light);
   line-height: 1.5;
   margin-bottom: 6px;
   font-size: 0.72rem;
 }
 
 .result-details {
-  background: #f0f0f0;
+  background: var(--bg);
   padding: 8px;
   border-radius: 6px;
 }
 
 .result-details p {
   margin: 4px 0;
-  color: #555;
+  color: var(--text-light);
   font-size: 0.72rem;
 }
 
-.result-details strong {
-  color: #333;
-}
+.result-details strong { color: var(--text); }
 
 @media (max-width: 768px) {
-  .debt-optimization-container {
-    padding: 10px;
-  }
-
-  .debt-section {
-    padding: 20px;
-    margin-bottom: 15px;
-  }
-
-  .debt-header h1 {
-    font-size: 1.8rem;
-  }
-
-  .debt-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .strategy-selector {
-    grid-template-columns: 1fr;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .comparison-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .plan-summary {
-    grid-template-columns: 1fr;
-  }
+  .debt-grid { grid-template-columns: 1fr; }
+  .strategy-selector { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .comparison-grid { grid-template-columns: 1fr; }
+  .plan-summary { grid-template-columns: 1fr; }
 }

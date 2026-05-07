@@ -4,6 +4,7 @@ import { useAuth } from "../AuthContext";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import "./RRSPvsTFSA.css";
 
 const PROVINCES = [
   { code: "AB", name: "Alberta" },
@@ -107,20 +108,18 @@ export default function RRSPvsTFSA() {
     setForm((f) => ({ ...f, [key]: val }));
 
   return (
-    <div style={{ padding: "2rem", maxWidth: 960 }}>
+    <div className="rrsp-container">
       <h1>RRSP vs TFSA Decision Tool</h1>
-      <p style={{ color: "var(--text-secondary)", marginBottom: "2rem", maxWidth: 680 }}>
+      <p className="rrsp-intro">
         Enter your current income, expected retirement income, and province to find out which
         account will leave you with more money in retirement. The comparison uses the same
         out-of-pocket cost for both options.
       </p>
 
       {/* ── Inputs ── */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
-        <h2 style={{ marginTop: 0, fontSize: "1.15rem" }}>Your Details</h2>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem" }}>
-
+      <div className="section-card">
+        <h2>Your Details</h2>
+        <div className="rrsp-inputs-grid">
           <Slider label={`Current Annual Income: ${fmt(form.currentIncome)}`}
             min={20000} max={400000} step={5000} value={form.currentIncome}
             onChange={(v) => set("currentIncome", v)} />
@@ -154,42 +153,41 @@ export default function RRSPvsTFSA() {
         </div>
 
         <button
-          className="btn btn-primary"
-          style={{ marginTop: "1.25rem", minWidth: 180 }}
+          className="btn btn-primary rrsp-calculate-btn"
           onClick={calculate}
           disabled={loading}
         >
           {loading ? "Calculating…" : "Compare RRSP vs TFSA"}
         </button>
-        {error && <p style={{ color: "var(--danger)", marginTop: "0.75rem" }}>{error}</p>}
+        {error && <p className="error-msg">{error}</p>}
       </div>
 
       {/* ── Results ── */}
       {result && (
         <>
-          {/* Recommendation banner */}
+          {/* Recommendation banner — per-recommendation semantic colors preserved */}
           {(() => {
-            const style = RECOMMENDATION_STYLES[result.recommendation];
+            const s = RECOMMENDATION_STYLES[result.recommendation];
             return (
-              <div style={{ background: style.bg, border: `2px solid ${style.border}`, borderRadius: 10, padding: "1.25rem 1.5rem", marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "1.5rem" }}>
+              <div className="rec-banner" style={{ background: s.bg, borderColor: s.border }}>
+                <div className="rec-banner-inner">
+                  <span className="rec-banner-icon">
                     {result.recommendation === "rrsp" ? "💰" : result.recommendation === "tfsa" ? "🎁" : "⚖️"}
                   </span>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "1.2rem", color: style.text }}>
-                      {style.label}
-                      <span style={{ marginLeft: "0.75rem", fontSize: "0.8rem", fontWeight: 400, opacity: 0.8 }}>
+                    <div className="rec-banner-label" style={{ color: s.text }}>
+                      {s.label}
+                      <span className="rec-banner-strength">
                         ({STRENGTH_LABEL[result.recommendationStrength]})
                       </span>
                     </div>
-                    <div style={{ marginTop: "0.35rem", color: style.text, fontSize: "0.95rem" }}>
+                    <div className="rec-banner-reason" style={{ color: s.text }}>
                       {result.reasoning}
                     </div>
                   </div>
                 </div>
                 {result.advantage.amount > 0 && (
-                  <div style={{ marginTop: "0.75rem", fontSize: "0.9rem", color: style.text }}>
+                  <div className="rec-banner-advantage" style={{ color: s.text }}>
                     The <strong>{result.advantage.winner.toUpperCase()}</strong> path delivers{" "}
                     <strong>{fmt(result.advantage.amount)}</strong> more in retirement
                     ({result.advantage.percent.toFixed(1)}% more value).
@@ -201,7 +199,7 @@ export default function RRSPvsTFSA() {
 
           {/* OAS clawback warning */}
           {result.oasClawbackRisk && (
-            <div style={{ background: "#fef9c3", border: "1px solid #eab308", borderRadius: 8, padding: "1rem 1.25rem", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+            <div className="oas-warning">
               <strong>⚠️ OAS Clawback Risk</strong> — Your projected RRSP balance at retirement could
               generate RRIF withdrawals of approximately {fmt(result.estimatedAnnualRRIFWithdrawal)}/year.
               Withdrawals above ~$91,757 (2024 threshold) trigger OAS recovery tax at 15%.
@@ -211,7 +209,7 @@ export default function RRSPvsTFSA() {
           )}
 
           {/* Tax rate comparison */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div className="rate-cards-grid">
             <RateCard
               title="Current Marginal Rate"
               subtitle={`${result.currentRates.provinceName} — income ${fmt(result.inputs.currentIncome)}`}
@@ -231,20 +229,20 @@ export default function RRSPvsTFSA() {
           </div>
 
           {/* Side-by-side comparison */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div className="comparison-cards-grid">
             <ComparisonCard
               title="RRSP Path"
               icon="💰"
               winner={result.advantage.winner === "rrsp"}
               rows={[
-                { label: "Gross contribution",          value: fmt(result.rrsp.grossContribution) },
-                { label: "Immediate tax refund",        value: fmt(result.rrsp.immediateRefund), highlight: true },
-                { label: "Net out-of-pocket cost",      value: fmt(result.rrsp.netCost) },
-                { label: "RRSP grows to (gross)",       value: fmt(result.rrsp.futureGrossValue) },
-                { label: "Tax on withdrawal",           value: `−${fmt(result.rrsp.futureTaxOnWithdrawal)}`, negative: true },
-                { label: "RRSP after-tax value",        value: fmt(result.rrsp.futureAfterTaxValue) },
-                { label: "Refund (TFSA) grows to",      value: fmt(result.rrsp.refundReinvestedTFSA) },
-                { label: "Total retirement value",      value: fmt(result.rrsp.totalRetirementValue), total: true },
+                { label: "Gross contribution",     value: fmt(result.rrsp.grossContribution) },
+                { label: "Immediate tax refund",   value: fmt(result.rrsp.immediateRefund), highlight: true },
+                { label: "Net out-of-pocket cost", value: fmt(result.rrsp.netCost) },
+                { label: "RRSP grows to (gross)",  value: fmt(result.rrsp.futureGrossValue) },
+                { label: "Tax on withdrawal",      value: `−${fmt(result.rrsp.futureTaxOnWithdrawal)}`, negative: true },
+                { label: "RRSP after-tax value",   value: fmt(result.rrsp.futureAfterTaxValue) },
+                { label: "Refund (TFSA) grows to", value: fmt(result.rrsp.refundReinvestedTFSA) },
+                { label: "Total retirement value", value: fmt(result.rrsp.totalRetirementValue), total: true },
               ]}
             />
             <ComparisonCard
@@ -252,23 +250,23 @@ export default function RRSPvsTFSA() {
               icon="🎁"
               winner={result.advantage.winner === "tfsa"}
               rows={[
-                { label: "After-tax contribution",      value: fmt(result.tfsa.contribution) },
-                { label: "Net out-of-pocket cost",      value: fmt(result.tfsa.contribution) },
-                { label: "TFSA grows to",               value: fmt(result.tfsa.futureValue) },
-                { label: "Tax on withdrawal",           value: "$0 — tax-free", highlight: true },
-                { label: "Total retirement value",      value: fmt(result.tfsa.totalRetirementValue), total: true },
+                { label: "After-tax contribution", value: fmt(result.tfsa.contribution) },
+                { label: "Net out-of-pocket cost", value: fmt(result.tfsa.contribution) },
+                { label: "TFSA grows to",          value: fmt(result.tfsa.futureValue) },
+                { label: "Tax on withdrawal",      value: "$0 — tax-free", highlight: true },
+                { label: "Total retirement value", value: fmt(result.tfsa.totalRetirementValue), total: true },
               ]}
             />
           </div>
 
           {/* Growth chart */}
           {result.growthTable.length > 0 && (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
-              <h3 style={{ marginTop: 0 }}>Projected Retirement Value Over Time</h3>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+            <div className="section-card chart-card">
+              <h3>Projected Retirement Value Over Time</h3>
+              <p className="chart-subtitle">
                 At {pct(result.inputs.assumedAnnualReturn)} annual return, same out-of-pocket cost for both.
               </p>
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={result.growthTable} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" tickFormatter={(v) => `Yr ${v}`} />
@@ -283,19 +281,19 @@ export default function RRSPvsTFSA() {
           )}
 
           {/* Key rules of thumb */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.5rem" }}>
-            <h3 style={{ marginTop: 0 }}>Key Rules of Thumb</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "0.75rem" }}>
+          <div className="section-card">
+            <h3>Key Rules of Thumb</h3>
+            <div className="tips-grid">
               {[
                 { icon: "📈", title: "RRSP wins when…", body: "Your current marginal rate is higher than your retirement rate. Typical for high earners expecting a simpler retirement." },
                 { icon: "🎁", title: "TFSA wins when…", body: "Your retirement income will be higher than today (e.g. DB pension, multiple income sources) or you're in a low bracket now." },
                 { icon: "⚖️", title: "Both make sense when…", body: "Rates are similar. Max TFSA first for flexibility — TFSA withdrawals don't affect GIS, OAS, or income-tested benefits." },
                 { icon: "🔄", title: "RRSP meltdown strategy", body: "If you'll face OAS clawback, draw down RRSP before 65 and shelter the proceeds in your TFSA to reduce future RRIF withdrawals." },
               ].map((card) => (
-                <div key={card.title} style={{ background: "var(--background)", borderRadius: 8, padding: "0.9rem 1rem" }}>
-                  <div style={{ fontSize: "1.3rem", marginBottom: "0.4rem" }}>{card.icon}</div>
-                  <div style={{ fontWeight: 600, marginBottom: "0.3rem" }}>{card.title}</div>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>{card.body}</div>
+                <div key={card.title} className="tip-card">
+                  <div className="tip-card-icon">{card.icon}</div>
+                  <div className="tip-card-title">{card.title}</div>
+                  <div className="tip-card-body">{card.body}</div>
                 </div>
               ))}
             </div>
@@ -319,7 +317,7 @@ function Slider({
       <label>{label}</label>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(Number(e.target.value))} />
-      {hint && <small style={{ color: "var(--text-secondary)" }}>{hint}</small>}
+      {hint && <small>{hint}</small>}
     </div>
   );
 }
@@ -331,11 +329,11 @@ function RateCard({
   federal: number; provincial: number; color: string;
 }) {
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.25rem" }}>
-      <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "0.2rem" }}>{title}</div>
-      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "0.6rem" }}>{subtitle}</div>
-      <div style={{ fontSize: "2rem", fontWeight: 700, color }}>{combined.toFixed(1)}%</div>
-      <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.4rem" }}>
+    <div className="rate-card">
+      <div className="rate-card-title">{title}</div>
+      <div className="rate-card-sub">{subtitle}</div>
+      <div className="rate-card-value" style={{ color }}>{combined.toFixed(1)}%</div>
+      <div className="rate-card-breakdown">
         Federal {federal}% + Provincial {provincial}%
       </div>
     </div>
@@ -349,34 +347,16 @@ function ComparisonCard({
   rows: Array<{ label: string; value: string; highlight?: boolean; negative?: boolean; total?: boolean }>;
 }) {
   return (
-    <div style={{
-      background: "var(--surface)",
-      border: `2px solid ${winner ? "#22c55e" : "var(--border)"}`,
-      borderRadius: 10,
-      overflow: "hidden",
-    }}>
-      <div style={{
-        background: winner ? "#f0fdf4" : "var(--background)",
-        padding: "0.9rem 1.25rem",
-        display: "flex", alignItems: "center", gap: "0.6rem",
-        borderBottom: "1px solid var(--border)",
-      }}>
-        <span style={{ fontSize: "1.4rem" }}>{icon}</span>
-        <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>{title}</span>
-        {winner && <span style={{ marginLeft: "auto", fontSize: "0.75rem", background: "#22c55e", color: "white", padding: "2px 8px", borderRadius: 12 }}>Winner</span>}
+    <div className={winner ? "comparison-card winner" : "comparison-card"}>
+      <div className={winner ? "comparison-header winner-header" : "comparison-header"}>
+        <span className="comparison-header-icon">{icon}</span>
+        <span className="comparison-header-title">{title}</span>
+        {winner && <span className="winner-badge">Winner</span>}
       </div>
-      <div style={{ padding: "0.75rem 1.25rem" }}>
+      <div className="comparison-body">
         {rows.map((row) => (
-          <div key={row.label} style={{
-            display: "flex", justifyContent: "space-between", alignItems: "baseline",
-            padding: "0.45rem 0",
-            borderBottom: row.total ? "none" : "1px solid var(--border)",
-            borderTop: row.total ? "2px solid var(--border)" : "none",
-            marginTop: row.total ? "0.25rem" : 0,
-            fontWeight: row.total ? 700 : 400,
-            fontSize: row.total ? "1rem" : "0.88rem",
-          }}>
-            <span style={{ color: "var(--text-secondary)" }}>{row.label}</span>
+          <div key={row.label} className={row.total ? "comparison-row total-row" : "comparison-row"}>
+            <span className="comparison-row-label">{row.label}</span>
             <span style={{
               color: row.highlight ? "var(--success)" : row.negative ? "var(--danger)" : row.total ? "var(--primary)" : "inherit",
               fontWeight: row.highlight || row.total ? 600 : 400,

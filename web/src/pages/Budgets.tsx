@@ -3,6 +3,7 @@ import { api } from "../api";
 import type { Budget, CategoryMajor } from "../types";
 import { CATEGORY_CATALOG } from "../data/categoryCatalog";
 import { DonutChart } from "../components/charts";
+import './Budgets.css';
 
 type BudgetCycle = "biweekly" | "monthly";
 type RolloverMode = "none" | "carry-unused" | "carry-net";

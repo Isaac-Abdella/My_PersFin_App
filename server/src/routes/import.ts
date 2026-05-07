@@ -3,8 +3,11 @@ import { Transaction } from "../models/Transaction";
 import { Account } from "../models/Account";
 import { requireAuth } from "../middleware/requireLogin";
 import { categorizeTransaction } from "../utils/categorization";
+import { parseStatement } from "../utils/pdfStatementParser";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
+// @ts-ignore — pdf-parse v1.x ships CJS without bundled types; @types/pdf-parse covers it
+import pdfParse from "pdf-parse";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -525,6 +528,130 @@ function parseDirectionType(rawDirection: string): "income" | "expense" | null {
 
   return null;
 }
+// ── PDF bank statement import ────────────────────────────────────────────────
+// POST /api/import/statement
+// Accepts a bank statement PDF, extracts text, scrubs PII, parses transactions.
+// Pass dryRun=true to preview without saving; omit or false to persist.
+
+router.post("/statement", upload.single("statement"), async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const { accountId, dryRun } = req.body;
+    const isDryRun = dryRun === "true" || dryRun === true;
+
+    if (!req.file) return res.status(400).json({ message: "PDF file required" });
+    if (!accountId) return res.status(400).json({ message: "accountId is required" });
+
+    const isFilePdf =
+      req.file.mimetype === "application/pdf" ||
+      req.file.originalname.toLowerCase().endsWith(".pdf");
+    if (!isFilePdf) return res.status(400).json({ message: "Only PDF files are supported for statement import" });
+
+    // Enforce a 20 MB cap
+    if (req.file.size > 20 * 1024 * 1024) {
+      return res.status(400).json({ message: "PDF must be smaller than 20 MB" });
+    }
+
+    const account = await Account.findOne({ _id: accountId, userId });
+    if (!account) return res.status(404).json({ message: "Account not found" });
+
+    // Extract text from PDF
+    let pdfText: string;
+    try {
+      const parsed = await pdfParse(req.file.buffer);
+      pdfText = parsed.text || "";
+    } catch {
+      return res.status(422).json({
+        message: "Could not extract text from this PDF. It may be password-protected, corrupted, or a scanned image. Try exporting a machine-readable PDF from your bank's online portal."
+      });
+    }
+
+    if (!pdfText.trim()) {
+      return res.status(422).json({
+        message: "This PDF appears to be scanned (image-only). Machine-readable PDFs exported from your bank's online portal work best."
+      });
+    }
+
+    // Log extracted text to help diagnose layout issues
+    console.log(`[PDF IMPORT] Extracted ${pdfText.length} chars. First 3000:\n${pdfText.slice(0, 3000)}`);
+
+    // Parse statement
+    const result = parseStatement(pdfText);
+    console.log(`[PDF IMPORT] Parsed ${result.transactions.length} transactions (institution: ${result.institutionGuess})`);
+
+    // Dry run: return preview without persisting
+    if (isDryRun) {
+      return res.json({
+        isDryRun: true,
+        institutionGuess: result.institutionGuess,
+        statementType: result.statementType,
+        accountTypeHint: result.accountTypeHint,
+        accountMask: result.accountMask,
+        periodFrom: result.periodFrom,
+        periodTo: result.periodTo,
+        transactionCount: result.transactions.length,
+        transactions: result.transactions.slice(0, 200),
+        warnings: result.warnings,
+        rawTextSample: pdfText.slice(0, 3000),
+      });
+    }
+
+    // Build dedup key set from existing transactions for this account
+    const existingTxns = await Transaction.find(
+      { userId, accountId },
+      { date: 1, amount: 1, description: 1 }
+    ).lean();
+    const existingKeys = new Set(
+      existingTxns.map(tx => `${new Date(tx.date).toDateString()}-${tx.amount}-${tx.description}`)
+    );
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: { index: number; error: string }[] = [];
+
+    for (let i = 0; i < result.transactions.length; i++) {
+      const t = result.transactions[i];
+      try {
+        const date = new Date(t.postedDate);
+        const dupKey = `${date.toDateString()}-${t.amount}-${t.descriptionClean}`;
+        if (existingKeys.has(dupKey)) { skipped++; continue; }
+
+        await Transaction.create({
+          userId,
+          accountId,
+          type: t.type,
+          amount: t.amount,
+          description: t.descriptionClean,
+          category: t.category,
+          date,
+          source: "pdf",
+        });
+        imported++;
+        existingKeys.add(dupKey); // prevent same-file dupes
+      } catch (err: any) {
+        errors.push({ index: i, error: err.message });
+      }
+    }
+
+    return res.json({
+      message: "PDF import completed",
+      institutionGuess: result.institutionGuess,
+      statementType: result.statementType,
+      periodFrom: result.periodFrom,
+      periodTo: result.periodTo,
+      imported,
+      skipped,
+      total: result.transactions.length,
+      errors: errors.length,
+      errorDetails: errors,
+      warnings: result.warnings,
+    });
+  } catch (err: any) {
+    console.error("PDF import error:", err);
+    return res.status(500).json({ message: "Server error during PDF import" });
+  }
+});
+
 // Get CSV template
 router.get("/template", (req: Request, res: Response) => {
   const template = `DATE,DESCRIPTION,DEBIT,CREDIT,BALANCE

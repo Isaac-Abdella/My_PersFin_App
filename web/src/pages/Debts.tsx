@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import type { Debt, PayoffStrategy } from "../types";
+import './Debts.css';
 
 type Cadence = "monthly" | "biweekly";
 
@@ -350,14 +351,10 @@ export default function Debts() {
     <div className="page">
 
       {/* ── Header ── */}
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+      <div className="page-header">
         <h1>Debt Planner</h1>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={detect}
-            disabled={detecting}
-            style={{ padding: "8px 16px", borderRadius: 7, background: "var(--bg-card)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
-          >
+        <div className="page-header-actions">
+          <button className="debt-detect-trigger" onClick={detect} disabled={detecting}>
             {detecting ? "Scanning…" : "🔍 Detect & Import"}
           </button>
           <button onClick={() => setShowForm(!showForm)}>
@@ -389,12 +386,9 @@ export default function Debts() {
             </div>
           </div>
           {(dashboard.liveAccountCount ?? 0) > 0 && (
-            <p style={{ fontSize: 12, color: "var(--text-light)", margin: "0 0 1rem", paddingLeft: 2 }}>
+            <p className="debt-live-note">
               Includes {dashboard.liveAccountCount} liability account{dashboard.liveAccountCount !== 1 ? "s" : ""} from your Accounts tab not yet imported — use{" "}
-              <button
-                onClick={detect}
-                style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", fontSize: 12, padding: 0, textDecoration: "underline" }}
-              >
+              <button className="debt-live-note-btn" onClick={detect}>
                 Detect &amp; Import
               </button>{" "}
               to track them with your actual interest rates.
@@ -405,171 +399,117 @@ export default function Debts() {
 
       {/* ── Detect & Import panel ── */}
       {(detected !== null || detecting || detectError) && (
-        <div className="card" style={{ marginBottom: "1rem", padding: "1.25rem" }}>
-          {/* Panel header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+        <div className="card debt-detect-panel">
+          <div className="debt-detect-header">
             <div>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+              <h3>
                 {detecting ? "Scanning your accounts…"
                   : detectError ? "Scan failed"
                   : "Detected Liability Accounts"}
               </h3>
               {!detecting && !detectError && detected !== null && (
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-light)" }}>
+                <p className="debt-detect-subtitle">
                   {visibleDetected.length === 0
                     ? "All liability accounts are already in the debt planner."
                     : `${newCount} new debt${newCount !== 1 ? "s" : ""} detected — review and edit the details, then import`}
                 </p>
               )}
               {detectError && (
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#dc2626" }}>{detectError}</p>
+                <p className="debt-detect-error-msg">{detectError}</p>
               )}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="debt-detect-actions">
               {!detecting && !detectError && newCount > 0 && (
-                <button
-                  onClick={importAll}
-                  disabled={importingAll}
-                  style={{ padding: "7px 16px", borderRadius: 7, background: "var(--primary)", color: "white", border: "none", fontSize: 13, cursor: "pointer", fontWeight: 600 }}
-                >
+                <button className="btn-primary btn-sm" onClick={importAll} disabled={importingAll}>
                   {importingAll ? "Importing…" : `Import All ${newCount}`}
                 </button>
               )}
-              <button
-                onClick={() => { setDetected(null); setDetectError(null); }}
-                style={{ padding: "7px 12px", borderRadius: 7, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13, cursor: "pointer" }}
-              >
+              <button className="btn-secondary btn-sm" onClick={() => { setDetected(null); setDetectError(null); }}>
                 Close
               </button>
             </div>
           </div>
 
           {detecting && (
-            <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-light)", fontSize: 14 }}>
+            <div className="debt-detecting-msg">
               Calculating live balances from transaction history…
             </div>
           )}
 
-          {/* Detected debt cards */}
           {!detecting && visibleDetected.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="debt-cards-list">
               {visibleDetected.map((d) => {
                 const s = editStates[d.accountId];
                 if (!s) return null;
                 const isImporting = importingId === d.accountId;
                 return (
-                  <div
-                    key={d.accountId}
-                    style={{
-                      border: "1px solid var(--border)",
-                      borderRadius: 10,
-                      padding: "14px 16px",
-                      background: d.alreadyImported ? "var(--bg)" : "var(--bg-card)",
-                      opacity: d.alreadyImported ? 0.65 : 1,
-                    }}
-                  >
-                    {/* Top row: icon + description + status */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                        <span style={{ fontSize: 22 }}>{TYPE_ICON[d.accountType] ?? "📋"}</span>
+                  <div key={d.accountId} className={`debt-detect-card${d.alreadyImported ? " imported" : ""}`}>
+                    <div className="debt-detect-card-top">
+                      <div className="debt-detect-card-left">
+                        <span className="debt-detect-icon">{TYPE_ICON[d.accountType] ?? "📋"}</span>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 15 }}>{d.suggestedName}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-light)", marginTop: 1 }}>{d.description}</div>
+                          <div className="debt-detect-name">{d.suggestedName}</div>
+                          <div className="debt-detect-desc">{d.description}</div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                        <span style={{ fontSize: 16, fontWeight: 700, color: "#dc2626" }}>{CAD(d.balance)}</span>
+                      <div className="debt-detect-card-right">
+                        <span className="debt-detect-amount">{CAD(d.balance)}</span>
                         {d.alreadyImported ? (
-                          <span style={{ fontSize: 12, color: "#059669", fontWeight: 600, padding: "3px 10px", borderRadius: 8, background: "#d1fae5" }}>✓ Imported</span>
+                          <span className="debt-imported-badge">✓ Imported</span>
                         ) : (
-                          <button
-                            onClick={() => importOne(d)}
-                            disabled={isImporting}
-                            style={{ padding: "5px 14px", borderRadius: 7, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", fontSize: 13, cursor: "pointer", fontWeight: 600 }}
-                          >
+                          <button className="debt-import-btn" onClick={() => importOne(d)} disabled={isImporting}>
                             {isImporting ? "Importing…" : "+ Import"}
                           </button>
                         )}
                         <button
+                          className="debt-dismiss-btn"
                           onClick={() => setDismissed((prev) => new Set([...prev, d.accountId]))}
                           title="Dismiss"
-                          style={{ padding: "4px 8px", borderRadius: 6, background: "none", color: "var(--text-light)", border: "1px solid var(--border)", fontSize: 14, cursor: "pointer" }}
                         >
                           ×
                         </button>
                       </div>
                     </div>
 
-                    {/* Editable fields grid */}
                     {!d.alreadyImported && (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
-                        {/* Name */}
+                      <div className="debt-field-grid">
                         <div>
-                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Debt Name</label>
-                          <input
-                            type="text"
-                            value={s.name}
-                            onChange={(e) => patchEdit(d.accountId, { name: e.target.value })}
-                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
-                          />
+                          <label className="debt-field-label">Debt Name</label>
+                          <input type="text" className="debt-field-input" value={s.name}
+                            onChange={(e) => patchEdit(d.accountId, { name: e.target.value })} />
                         </div>
-
-                        {/* Type */}
                         <div>
-                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Debt Type</label>
-                          <select
-                            value={s.type}
-                            onChange={(e) => patchEdit(d.accountId, { type: e.target.value as Debt["type"] })}
-                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
-                          >
+                          <label className="debt-field-label">Debt Type</label>
+                          <select className="debt-field-input" value={s.type}
+                            onChange={(e) => patchEdit(d.accountId, { type: e.target.value as Debt["type"] })}>
                             {DEBT_TYPES.map((t) => (
                               <option key={t.value} value={t.value}>{t.label}</option>
                             ))}
                           </select>
                         </div>
-
-                        {/* Interest rate */}
                         <div>
-                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          <label className="debt-field-label">
                             Interest Rate %
-                            <span style={{ fontWeight: 400, marginLeft: 4, fontSize: 10 }}>(est.)</span>
+                            <span className="debt-field-label-note">(est.)</span>
                           </label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.01}
+                          <input type="number" min={0} step={0.01} className="debt-field-input"
                             value={s.interestRate}
-                            onChange={(e) => patchEdit(d.accountId, { interestRate: e.target.value })}
-                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
-                          />
+                            onChange={(e) => patchEdit(d.accountId, { interestRate: e.target.value })} />
                         </div>
-
-                        {/* Minimum payment */}
                         <div>
-                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          <label className="debt-field-label">
                             Min. Payment / mo
-                            <span style={{ fontWeight: 400, marginLeft: 4, fontSize: 10 }}>(calc.)</span>
+                            <span className="debt-field-label-note">(calc.)</span>
                           </label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.01}
+                          <input type="number" min={0} step={0.01} className="debt-field-input"
                             value={s.minimumPayment}
-                            onChange={(e) => patchEdit(d.accountId, { minimumPayment: e.target.value })}
-                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
-                          />
+                            onChange={(e) => patchEdit(d.accountId, { minimumPayment: e.target.value })} />
                         </div>
-
-                        {/* Lender */}
                         <div>
-                          <label style={{ fontSize: 11, color: "var(--text-light)", display: "block", marginBottom: 3, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Lender / Institution</label>
-                          <input
-                            type="text"
-                            value={s.lender}
-                            onChange={(e) => patchEdit(d.accountId, { lender: e.target.value })}
+                          <label className="debt-field-label">Lender / Institution</label>
+                          <input type="text" className="debt-field-input" value={s.lender}
                             placeholder={d.institution ?? "e.g. TD Bank"}
-                            style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontSize: 13 }}
-                          />
+                            onChange={(e) => patchEdit(d.accountId, { lender: e.target.value })} />
                         </div>
                       </div>
                     )}
@@ -577,15 +517,14 @@ export default function Debts() {
                 );
               })}
 
-              <p style={{ fontSize: 11, color: "var(--text-light)", margin: "4px 0 0" }}>
+              <p className="debt-detect-hint">
                 💡 Balances are calculated from your transaction history. Interest rates and minimum payments are Canadian estimates — update them to reflect your actual terms before importing.
               </p>
             </div>
           )}
 
-          {/* No new debts found state */}
           {!detecting && !detectError && detected !== null && visibleDetected.length === 0 && (
-            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-light)", fontSize: 14 }}>
+            <div className="debt-detect-empty">
               No untracked liability accounts found. Add accounts in the Accounts tab first, or add debts manually.
             </div>
           )}
@@ -644,8 +583,8 @@ export default function Debts() {
 
       {/* ── Debt accounts table ── */}
       {debts.length > 0 && (
-        <div className="card" style={{ marginBottom: "1rem" }}>
-          <h3 style={{ marginTop: 0 }}>Debt Accounts</h3>
+        <div className="card debt-section-card">
+          <h3>Debt Accounts</h3>
           <table>
             <thead>
               <tr>
@@ -673,12 +612,12 @@ export default function Debts() {
                       : debt.dueDate
                       ? new Date(debt.dueDate).toLocaleDateString()
                       : "-"}
-                    <div style={{ color: "var(--text-light)", fontSize: "0.8rem" }}>
+                    <div className="debt-due-sub">
                       {debt.dueScheduleType || "specific"}
                     </div>
                   </td>
                   <td>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <div className="row">
                       <input
                         type="number"
                         step="0.01"
@@ -706,9 +645,9 @@ export default function Debts() {
 
       {/* ── Payoff planner ── */}
       {debts.length > 0 && (
-        <div className="card" style={{ marginBottom: "1rem" }}>
-          <h3 style={{ marginTop: 0 }}>Payoff Planner (Avalanche vs Snowball)</h3>
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "end" }}>
+        <div className="card debt-section-card">
+          <h3>Payoff Planner (Avalanche vs Snowball)</h3>
+          <div className="debt-planner-controls">
             <label>
               Cadence
               <select value={cadence} onChange={(e) => setCadence(e.target.value as Cadence)}>
@@ -730,7 +669,7 @@ export default function Debts() {
           </div>
 
           {strategies && (
-            <div className="card-grid" style={{ marginTop: "1rem" }}>
+            <div className="card-grid debt-planner-grid">
               <div className="card">
                 <h4>Avalanche</h4>
                 <p>Payoff Time: <strong>{strategies.avalanche?.totalYears} years</strong></p>
@@ -754,7 +693,7 @@ export default function Debts() {
           )}
 
           {optimizer && (
-            <div style={{ marginTop: "1rem" }}>
+            <div className="debt-planner-grid">
               <h4>Payment Optimizer</h4>
               <p>Minimum total: ${optimizer.totalMinimumPerCadence.toFixed(2)} | Extra: ${optimizer.extraPerCadence.toFixed(2)}</p>
               <table>
@@ -783,7 +722,7 @@ export default function Debts() {
           )}
 
           {whatIf && whatIf.comparison && (
-            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
+            <div className="debt-whatif">
               <h4>What-if Simulation</h4>
               <p>
                 Adding ${Number(extraPayment).toFixed(2)} per {cadence === "biweekly" ? "paycheck" : "month"} saves
@@ -798,7 +737,7 @@ export default function Debts() {
       {/* ── Upcoming due dates ── */}
       {dashboard && dashboard.upcomingDue.length > 0 && (
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Upcoming Due Dates (30 Days)</h3>
+          <h3>Upcoming Due Dates (30 Days)</h3>
           <table>
             <thead>
               <tr>

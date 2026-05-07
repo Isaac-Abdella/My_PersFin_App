@@ -1,0 +1,361 @@
+/* ETFModelPortfolios page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.etf-container {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.etf-header { margin-bottom: 16px; }
+
+.etf-header h1 {
+  font-size: 0.92rem;
+  margin: 0;
+  color: var(--text);
+}
+
+.etf-header p {
+  font-size: 0.72rem;
+  margin: 4px 0 0 0;
+  color: var(--text-light);
+  max-width: 680px;
+  line-height: 1.4;
+}
+
+/* ── Tab bar ────────────────────────────────── */
+.etf-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+  gap: 0;
+}
+
+.etf-tab {
+  padding: 0.42rem 0.9rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-light);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.etf-tab.active {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.etf-tab:hover:not(.active) {
+  color: var(--text);
+}
+
+/* ── Info banner ────────────────────────────── */
+.info-banner {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  line-height: 1.4;
+}
+
+/* ── ETF cards grid ─────────────────────────── */
+.etf-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.etf-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+
+.etf-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.etf-symbol {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.risk-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: white;
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+
+.etf-mer {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  text-align: right;
+}
+
+.etf-provider {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+
+.etf-description {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+/* ── Allocation bar ─────────────────────────── */
+.alloc-bar-wrap { margin-bottom: 8px; }
+
+.alloc-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.alloc-bar-equity { background: var(--primary); }
+.alloc-bar-bonds { background: #94a3b8; }
+
+.alloc-legend {
+  display: flex;
+  gap: 10px;
+  font-size: 0.68rem;
+  color: var(--text-light);
+}
+
+.alloc-legend .equity { color: var(--primary); }
+.alloc-legend .bonds { color: #94a3b8; }
+
+/* ── Holdings breakdown grid inside ETF card ── */
+.etf-holdings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  font-size: 0.7rem;
+  color: var(--text-light);
+}
+
+.etf-holdings-grid span strong { color: var(--text); }
+
+/* ── Comparison table card ──────────────────── */
+.table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 10px;
+  box-shadow: var(--shadow);
+}
+
+.table-card-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-card-header h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.inv-table th {
+  background: var(--primary);
+  color: white;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inv-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.inv-table tr.row-alt { background: var(--bg); }
+.inv-table tr:last-child td { border-bottom: none; }
+
+/* ── Couch Potato portfolio cards ───────────── */
+.portfolio-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow);
+}
+
+.portfolio-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.portfolio-card-title h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.complexity-badge {
+  font-size: 0.68rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: var(--text-light);
+}
+
+.portfolio-description {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.fund-alloc-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.fund-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.fund-legend-item {
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.pros-cons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pros-cons-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.pros-cons-title.pros { color: var(--success); }
+.pros-cons-title.cons { color: #d97706; }
+
+.pros-cons ul {
+  margin: 0;
+  padding-left: 14px;
+}
+
+.pros-cons ul li {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+
+/* ── Asset location section ─────────────────── */
+.section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+
+.section-card h3 {
+  margin: 0 0 4px 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.section-card > p {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-bottom: 10px;
+}
+
+.account-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.location-summary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+.badge-best {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.badge-avoid {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .badge-best { background: rgba(21,128,61,0.2); color: #86efac; }
+[data-theme="dark"] .badge-avoid { background: rgba(185,28,28,0.2); color: #fca5a5; }
+
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .etf-cards-grid { grid-template-columns: 1fr; }
+  .pros-cons { grid-template-columns: 1fr; }
+  .etf-tabs { overflow-x: auto; }
+}

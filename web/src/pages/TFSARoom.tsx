@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import "./TFSARoom.css";
 
 interface ScheduleRow {
   year: number;
@@ -31,12 +32,12 @@ const fmt = (n: number) =>
 const currentYear = new Date().getFullYear();
 
 export default function TFSARoom() {
-  const [birthYear, setBirthYear]       = useState(1990);
+  const [birthYear, setBirthYear]         = useState(1990);
   const [contributions, setContributions] = useState(0);
-  const [withdrawals, setWithdrawals]   = useState(0);
-  const [result, setResult]             = useState<Result | null>(null);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState("");
+  const [withdrawals, setWithdrawals]     = useState(0);
+  const [result, setResult]               = useState<Result | null>(null);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState("");
 
   const calculate = async () => {
     setLoading(true);
@@ -56,20 +57,18 @@ export default function TFSARoom() {
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: 900 }}>
+    <div className="tfsa-container">
       <h1>TFSA Lifetime Room Calculator</h1>
-      <p style={{ color: "var(--text-secondary)", marginBottom: "2rem", maxWidth: 680 }}>
+      <p className="tfsa-intro">
         Your TFSA contribution room is based on your year of birth and every calendar year
         you were 18+ and a Canadian resident since 2009. Enter your details to see your exact
         remaining room, year by year.
       </p>
 
       {/* ── Inputs ── */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
-        <h2 style={{ marginTop: 0, fontSize: "1.1rem" }}>Your Details</h2>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "1.25rem" }}>
-
+      <div className="section-card">
+        <h2>Your Details</h2>
+        <div className="tfsa-input-grid">
           <div className="form-group">
             <label>Year of Birth</label>
             <input
@@ -79,9 +78,7 @@ export default function TFSARoom() {
               value={birthYear}
               onChange={(e) => setBirthYear(Number(e.target.value))}
             />
-            <small style={{ color: "var(--text-secondary)" }}>
-              You became eligible starting {Math.max(2009, birthYear + 18)}.
-            </small>
+            <small>You became eligible starting {Math.max(2009, birthYear + 18)}.</small>
           </div>
 
           <div className="form-group">
@@ -93,9 +90,7 @@ export default function TFSARoom() {
               onChange={(e) => setContributions(Number(e.target.value))}
               placeholder="0"
             />
-            <small style={{ color: "var(--text-secondary)" }}>
-              Sum of all deposits ever made across all your TFSAs.
-            </small>
+            <small>Sum of all deposits ever made across all your TFSAs.</small>
           </div>
 
           <div className="form-group">
@@ -107,22 +102,17 @@ export default function TFSARoom() {
               onChange={(e) => setWithdrawals(Number(e.target.value))}
               placeholder="0"
             />
-            <small style={{ color: "var(--text-secondary)" }}>
+            <small>
               Withdrawals before Jan 1 this year — these add back to your room now.
               Do <em>not</em> include withdrawals made this calendar year.
             </small>
           </div>
         </div>
 
-        <button
-          className="btn btn-primary"
-          style={{ minWidth: 160 }}
-          onClick={calculate}
-          disabled={loading}
-        >
+        <button className="btn btn-primary" style={{ minWidth: 160 }} onClick={calculate} disabled={loading}>
           {loading ? "Calculating…" : "Calculate My Room"}
         </button>
-        {error && <p style={{ color: "var(--danger)", marginTop: "0.75rem" }}>{error}</p>}
+        {error && <p className="error-msg">{error}</p>}
       </div>
 
       {/* ── Results ── */}
@@ -130,11 +120,9 @@ export default function TFSARoom() {
         <>
           {/* Over-contribution alert */}
           {result.isOverContributed && (
-            <div style={{ background: "#fef2f2", border: "2px solid var(--danger)", borderRadius: 10, padding: "1rem 1.25rem", marginBottom: "1.5rem" }}>
-              <strong style={{ color: "var(--danger)", fontSize: "1rem" }}>
-                ⚠️ Over-Contribution Detected
-              </strong>
-              <p style={{ margin: "0.5rem 0 0", color: "var(--danger)" }}>
+            <div className="over-contrib-alert">
+              <strong>⚠️ Over-Contribution Detected</strong>
+              <p>
                 You have over-contributed by <strong>{fmt(result.overContribution)}</strong>.
                 The CRA penalty is <strong>1% per month</strong> on the excess —
                 currently <strong>{fmt(result.monthlyPenalty)}/month</strong>.
@@ -144,7 +132,7 @@ export default function TFSARoom() {
           )}
 
           {/* Summary cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div className="tfsa-summary-grid">
             {[
               {
                 label: "Lifetime Room Accumulated",
@@ -175,16 +163,16 @@ export default function TFSARoom() {
                 color: result.isOverContributed ? "var(--danger)" : "var(--success)",
               },
             ].map((card) => (
-              <div key={card.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.1rem" }}>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: "0.3rem" }}>{card.label}</div>
-                <div style={{ fontSize: "1.45rem", fontWeight: 700, color: card.color }}>{card.value}</div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>{card.sub}</div>
+              <div key={card.label} className="stat-card">
+                <div className="stat-label">{card.label}</div>
+                <div className="stat-value" style={{ color: card.color }}>{card.value}</div>
+                <div className="stat-sub">{card.sub}</div>
               </div>
             ))}
           </div>
 
           {/* Next year info */}
-          <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "0.9rem 1.25rem", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+          <div className="next-year-banner">
             <strong>Starting January 1, {result.currentYear + 1}:</strong> Your room increases
             by {fmt(result.nextYearNewLimit)} (the {result.currentYear + 1} annual limit),
             bringing your total lifetime room to {fmt(result.nextYearTotalRoom)}.
@@ -192,73 +180,60 @@ export default function TFSARoom() {
           </div>
 
           {/* Year-by-year table */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: "1.5rem" }}>
-            <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-              <h3 style={{ margin: 0 }}>Year-by-Year TFSA Room Schedule</h3>
-              <p style={{ margin: "0.35rem 0 0", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                Room highlighted in grey indicates years before you were eligible.
-              </p>
+          <div className="schedule-table-card">
+            <div className="table-card-header">
+              <h3>Year-by-Year TFSA Room Schedule</h3>
+              <p>Room highlighted in grey indicates years before you were eligible.</p>
             </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
+            <div className="table-scroll">
+              <table className="schedule-table">
                 <thead>
-                  <tr style={{ background: "var(--background)", textAlign: "left" }}>
+                  <tr>
                     {["Year", "Annual Limit", "Cumulative Room", "Your Status"].map((h) => (
-                      <th key={h} style={{ padding: "0.6rem 1rem", fontWeight: 600, borderBottom: "1px solid var(--border)" }}>{h}</th>
+                      <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {result.schedule.map((row, i) => (
-                    <tr
-                      key={row.year}
-                      style={{
-                        background: !row.eligible
-                          ? "var(--background)"
-                          : row.year === result.currentYear
-                            ? "#eff6ff"
-                            : i % 2 === 0 ? "var(--surface)" : "var(--background)",
-                        opacity: row.eligible ? 1 : 0.5,
-                      }}
-                    >
-                      <td style={{ padding: "0.5rem 1rem", borderBottom: "1px solid var(--border)", fontWeight: row.year === result.currentYear ? 700 : 400 }}>
-                        {row.year}
-                        {row.year === result.currentYear && (
-                          <span style={{ marginLeft: "0.5rem", fontSize: "0.72rem", background: "var(--primary)", color: "white", padding: "1px 6px", borderRadius: 8 }}>
-                            Current
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: "0.5rem 1rem", borderBottom: "1px solid var(--border)" }}>
-                        {row.eligible ? fmt(row.annualLimit) : "—"}
-                      </td>
-                      <td style={{ padding: "0.5rem 1rem", borderBottom: "1px solid var(--border)", fontWeight: 600 }}>
-                        {row.eligible ? fmt(row.cumulativeRoom) : "—"}
-                      </td>
-                      <td style={{ padding: "0.5rem 1rem", borderBottom: "1px solid var(--border)", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                        {!row.eligible
-                          ? `Not yet eligible (turn 18 in ${result.birthYear + 18})`
-                          : row.year < result.firstEligibleYear
-                            ? "Not yet eligible"
-                            : "Room accumulating"}
-                      </td>
-                    </tr>
-                  ))}
+                  {result.schedule.map((row, i) => {
+                    let rowClass = "row-ineligible";
+                    if (row.eligible) {
+                      if (row.year === result.currentYear) rowClass = "row-current";
+                      else rowClass = i % 2 === 0 ? "row-even" : "row-odd";
+                    }
+                    return (
+                      <tr key={row.year} className={rowClass}>
+                        <td>
+                          {row.year}
+                          {row.year === result.currentYear && (
+                            <span className="current-year-badge">Current</span>
+                          )}
+                        </td>
+                        <td>{row.eligible ? fmt(row.annualLimit) : "—"}</td>
+                        <td style={{ fontWeight: 600 }}>{row.eligible ? fmt(row.cumulativeRoom) : "—"}</td>
+                        <td style={{ fontSize: "0.72rem", color: "var(--text-light)" }}>
+                          {!row.eligible
+                            ? `Not yet eligible (turn 18 in ${result.birthYear + 18})`
+                            : row.year < result.firstEligibleYear
+                              ? "Not yet eligible"
+                              : "Room accumulating"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
           {/* Key rules */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.25rem" }}>
-            <h3 style={{ marginTop: 0 }}>Key TFSA Rules</h3>
-            <ul style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+          <div className="rules-card">
+            <h3>Key TFSA Rules</h3>
+            <ul className="rules-list">
               {result.notes.map((note, i) => (
-                <li key={i} style={{ fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  {note}
-                </li>
+                <li key={i}>{note}</li>
               ))}
-              <li style={{ fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+              <li>
                 The CRA tracks your TFSA room using your SIN. You can verify your exact room
                 through <strong>My CRA Account</strong> at canada.ca — always cross-check before
                 making large contributions.

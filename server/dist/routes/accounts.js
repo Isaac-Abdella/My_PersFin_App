@@ -76,7 +76,7 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
     try {
         const userId = req.user.id;
-        const { name, type, balance, currency } = req.body;
+        const { name, type, balance, currency, institution } = req.body;
         if (!name || !type) {
             return res.status(400).json({ message: "Name and type are required" });
         }
@@ -84,8 +84,9 @@ router.post("/", async (req, res) => {
             userId,
             name,
             type,
+            institution: institution || undefined,
             balance: balance || 0,
-            currency: currency || "USD"
+            currency: currency || "CAD"
         });
         return res.status(201).json(account);
     }
@@ -98,8 +99,8 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
     try {
         const userId = req.user.id;
-        const { name, type, balance, currency } = req.body;
-        const account = await Account_1.Account.findOneAndUpdate({ _id: req.params.id, userId }, { name, type, balance, currency }, { new: true, runValidators: true });
+        const { name, type, balance, currency, institution } = req.body;
+        const account = await Account_1.Account.findOneAndUpdate({ _id: req.params.id, userId }, { name, type, balance, currency, institution }, { new: true, runValidators: true });
         if (!account) {
             return res.status(404).json({ message: "Account not found" });
         }

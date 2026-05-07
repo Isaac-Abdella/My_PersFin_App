@@ -1,0 +1,7 @@
+/* Dashboard page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.dashboard-container {
+  max-width: 1050px;
+  margin: 0 auto;
+}

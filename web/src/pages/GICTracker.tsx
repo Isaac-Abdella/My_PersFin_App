@@ -172,7 +172,7 @@ export default function GICTracker() {
   });
 
   return (
-    <div style={{ padding: "10px", maxWidth: 960 }}>
+    <div className="page">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
         <div>
           <h1 style={{ margin: 0 }}>GIC Tracker</h1>

@@ -1,0 +1,151 @@
+/* Reports page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.reports-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* ── Page header ───────────────────────────── */
+.reports-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reports-page-header h1 {
+  font-size: 0.92rem;
+  color: var(--text);
+  margin: 0 0 2px;
+}
+
+.reports-page-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 0;
+}
+
+.reports-export-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reports-export-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: inherit;
+}
+
+.reports-export-btn:hover {
+  background: var(--bg);
+}
+
+/* ── Report selector ───────────────────────── */
+.reports-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.report-type-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  min-width: 155px;
+  flex: 1 1 155px;
+  font-family: inherit;
+}
+
+.report-type-btn.active {
+  border: 2px solid var(--primary);
+  background: #eff6ff;
+}
+
+[data-theme="dark"] .report-type-btn.active {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.report-type-icon {
+  font-size: 1.1rem;
+}
+
+.report-type-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.report-type-btn.active .report-type-label {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.report-type-desc {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+/* ── Controls bar ──────────────────────────── */
+.reports-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.reports-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.reports-controls select {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+
+/* ── Report content area ───────────────────── */
+.report-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  min-height: 280px;
+}
+
+.report-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-light);
+  font-size: 0.78rem;
+}
+
+.report-error {
+  color: var(--danger);
+  padding: 16px;
+  font-size: 0.78rem;
+}

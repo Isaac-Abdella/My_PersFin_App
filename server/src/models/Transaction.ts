@@ -11,7 +11,7 @@ export interface ITransaction extends Document {
   statementBalance?: number | null;
   plaidTransactionId?: string;
   plaidAccountId?: string;
-  source?: "manual" | "csv" | "plaid";
+  source?: "manual" | "csv" | "pdf" | "plaid";
   createdAt: Date;
 }
 
@@ -30,7 +30,7 @@ const transactionSchema = new Schema<ITransaction>({
   statementBalance:    { type: Number, required: false, default: null },
   plaidTransactionId:  { type: String, sparse: true },
   plaidAccountId:      { type: String },
-  source:              { type: String, enum: ["manual", "csv", "plaid"], default: "manual" },
+  source:              { type: String, enum: ["manual", "csv", "pdf", "plaid"], default: "manual" },
   createdAt:           { type: Date, default: Date.now }
 });
 

@@ -1,0 +1,51 @@
+/* Settings page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.settings-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.settings-container h1 {
+  font-size: 0.92rem;
+  color: var(--text);
+  margin: 0 0 6px 0;
+}
+
+.settings-intro {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 0 0 20px 0;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+}
+
+.settings-section h3 {
+  font-size: 0.78rem;
+  color: var(--text);
+  margin: 0 0 10px 0;
+}
+
+.settings-section .form-group {
+  margin-bottom: 10px;
+}
+
+.form-hint {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-top: 3px;
+}
+
+.error-msg {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+}
+
+.success-msg {
+  color: var(--success);
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+}

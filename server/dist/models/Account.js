@@ -43,8 +43,9 @@ const accountSchema = new mongoose_1.Schema({
         enum: ["chequing", "checking", "savings", "credit-card", "tfsa", "rrsp", "gic", "line-of-credit", "student-loan", "mortgage", "auto-loan", "personal-loan", "investment", "other"],
         required: true
     },
+    institution: { type: String },
     balance: { type: Number, default: 0 },
-    currency: { type: String, default: "USD" },
+    currency: { type: String, default: "CAD" },
     createdAt: { type: Date, default: Date.now }
 });
 exports.Account = mongoose_1.default.model("Account", accountSchema);

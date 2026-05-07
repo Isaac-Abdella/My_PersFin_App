@@ -2,8 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const Debt_1 = require("../models/Debt");
+const Account_1 = require("../models/Account");
+const Transaction_1 = require("../models/Transaction");
 const requireLogin_1 = require("../middleware/requireLogin");
 const router = (0, express_1.Router)();
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function monthlyEquivalent(amount, cadence) {
     return cadence === "biweekly" ? (amount * 26) / 12 : amount;
 }
@@ -141,18 +144,120 @@ function computeNextDueDate(dueScheduleType, dueDate, referenceDate) {
     }
     return nextMonthlyDate(new Date(dueDate), referenceDate);
 }
+// Canadian default rates and amortization terms per liability account type
+const LIABILITY_ACCOUNT_TYPES = [
+    "credit-card", "line-of-credit", "student-loan", "mortgage", "auto-loan", "personal-loan"
+];
+const DEBT_DEFAULTS = {
+    "credit-card": { debtType: "credit-card", interestRate: 19.99, termMonths: 60, label: "Credit Card" },
+    "line-of-credit": { debtType: "other", interestRate: 7.50, termMonths: 120, label: "Line of Credit" },
+    "student-loan": { debtType: "student-loan", interestRate: 6.45, termMonths: 114, label: "Student Loan" },
+    "mortgage": { debtType: "mortgage", interestRate: 5.25, termMonths: 300, label: "Mortgage" },
+    "auto-loan": { debtType: "auto-loan", interestRate: 8.99, termMonths: 60, label: "Auto Loan" },
+    "personal-loan": { debtType: "personal-loan", interestRate: 11.99, termMonths: 48, label: "Personal Loan" },
+};
+function amortizedPayment(balance, annualRate, termMonths) {
+    const r = annualRate / 100 / 12;
+    if (r === 0 || balance <= 0)
+        return round2(balance / termMonths);
+    const payment = balance * r * Math.pow(1 + r, termMonths) / (Math.pow(1 + r, termMonths) - 1);
+    return round2(payment);
+}
+// Build a descriptive suggested name: prefer "Institution AccountName" when institution
+// isn't already embedded in the account name.
+function suggestDebtName(accountName, institution) {
+    if (!institution)
+        return accountName;
+    const norm = accountName.toLowerCase();
+    const instNorm = institution.toLowerCase();
+    if (norm.includes(instNorm) || instNorm.includes(norm.split(" ")[0]))
+        return accountName;
+    return `${institution} ${accountName}`;
+}
+// Human-readable one-liner describing what this debt is.
+function generateDescription(accountType, institution, balance) {
+    const CAD = (n) => n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
+    const inst = institution ? `${institution} ` : "";
+    switch (accountType) {
+        case "credit-card": return `${inst}credit card — ${CAD(balance)} outstanding balance`;
+        case "line-of-credit": return `${inst}line of credit — ${CAD(balance)} drawn`;
+        case "student-loan": return `${inst}student loan — ${CAD(balance)} remaining`;
+        case "mortgage": return `${inst}residential mortgage — ${CAD(balance)} principal outstanding`;
+        case "auto-loan": return `${inst}vehicle loan — ${CAD(balance)} remaining`;
+        case "personal-loan": return `${inst}personal loan — ${CAD(balance)} outstanding`;
+        default: return `${inst}debt — ${CAD(balance)} balance`;
+    }
+}
+// Recalculate a liability account's current balance from its transaction history,
+// mirroring the logic in accounts.ts getRecalculatedAccountBalance.
+async function calcLiabilityBalance(userId, accountId) {
+    // Check for a statement balance snapshot first (credit-card style)
+    const latestStatement = await Transaction_1.Transaction.findOne({
+        userId,
+        accountId,
+        statementBalance: { $exists: true, $ne: null, $gt: 0 },
+    })
+        .sort({ date: -1, createdAt: -1, _id: -1 })
+        .lean();
+    if (latestStatement && typeof latestStatement.statementBalance === "number") {
+        return Math.max(0, latestStatement.statementBalance);
+    }
+    // Sum from individual transactions
+    // For liability accounts: expense transactions increase the balance (owe more),
+    // income transactions decrease it (payments reduce debt).
+    const txns = await Transaction_1.Transaction.find({ userId, accountId }).lean();
+    if (txns.length === 0)
+        return 0;
+    let balance = 0;
+    for (const t of txns) {
+        // baseDelta (as in accounts.ts): income → +amount, expense → -amount
+        const baseDelta = t.type === "income" ? t.amount : -t.amount;
+        // Liability: negate baseDelta (expense adds to balance, income reduces it)
+        balance += -baseDelta;
+    }
+    return Math.max(0, balance);
+}
 // All routes require authentication
 router.use(requireLogin_1.requireAuth);
+// ── GET /api/debts/dashboard ──────────────────────────────────────────────────
 router.get("/dashboard", async (req, res) => {
     try {
         const userId = req.user.id;
         const debts = await Debt_1.Debt.find({ userId }).sort({ interestRate: -1 });
-        const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0);
-        const totalMinimumPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
+        // Include untracked liability accounts so KPI cards reflect real debt load
+        // even before the user has imported anything via Detect & Import.
+        const liabilityAccounts = await Account_1.Account.find({
+            userId,
+            type: { $in: LIABILITY_ACCOUNT_TYPES },
+        }).lean();
+        const existingDebtNames = new Set(debts.map((d) => d.name.toLowerCase().trim()));
+        const liveAccounts = [];
+        for (const acct of liabilityAccounts) {
+            const aName = acct.name.toLowerCase().trim();
+            const alreadyTracked = [...existingDebtNames].some((n) => n === aName || n.includes(aName) || aName.includes(n));
+            if (alreadyTracked)
+                continue;
+            const balance = await calcLiabilityBalance(userId, acct._id.toString());
+            if (balance < 1)
+                continue;
+            const defaults = DEBT_DEFAULTS[acct.type] ?? { debtType: "other", interestRate: 10, termMonths: 60, label: acct.type };
+            liveAccounts.push({
+                balance,
+                interestRate: defaults.interestRate,
+                minimumPayment: amortizedPayment(balance, defaults.interestRate, defaults.termMonths),
+            });
+        }
+        // Combine tracked debts + untracked live accounts
+        const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0) +
+            liveAccounts.reduce((sum, a) => sum + a.balance, 0);
+        const totalMinimumPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0) +
+            liveAccounts.reduce((sum, a) => sum + a.minimumPayment, 0);
         const weightedInterestRate = totalDebt > 0
-            ? debts.reduce((sum, d) => sum + d.currentBalance * d.interestRate, 0) / totalDebt
+            ? (debts.reduce((sum, d) => sum + d.currentBalance * d.interestRate, 0) +
+                liveAccounts.reduce((sum, a) => sum + a.balance * a.interestRate, 0)) / totalDebt
             : 0;
-        const monthlyInterestEstimate = debts.reduce((sum, d) => sum + d.currentBalance * (d.interestRate / 100 / 12), 0);
+        const monthlyInterestEstimate = debts.reduce((sum, d) => sum + d.currentBalance * (d.interestRate / 100 / 12), 0) +
+            liveAccounts.reduce((sum, a) => sum + a.balance * (a.interestRate / 100 / 12), 0);
         const annualInterestEstimate = monthlyInterestEstimate * 12;
         const today = startOfDay(new Date());
         const inThirtyDays = new Date(today);
@@ -162,11 +267,7 @@ router.get("/dashboard", async (req, res) => {
             const plainDebt = d.toObject();
             const scheduleType = (plainDebt.dueScheduleType || "specific");
             const nextDueDate = computeNextDueDate(scheduleType, plainDebt.dueDate ? new Date(plainDebt.dueDate) : undefined, today);
-            return {
-                ...plainDebt,
-                dueScheduleType: scheduleType,
-                nextDueDate
-            };
+            return { ...plainDebt, dueScheduleType: scheduleType, nextDueDate };
         })
             .filter((d) => d.nextDueDate && d.nextDueDate >= today && d.nextDueDate <= inThirtyDays)
             .sort((a, b) => a.nextDueDate.getTime() - b.nextDueDate.getTime());
@@ -179,7 +280,8 @@ router.get("/dashboard", async (req, res) => {
                 annualInterestEstimate: round2(annualInterestEstimate)
             },
             upcomingDue,
-            count: debts.length
+            count: debts.length,
+            liveAccountCount: liveAccounts.length,
         });
     }
     catch (err) {
@@ -187,7 +289,7 @@ router.get("/dashboard", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
-// Calculate debt payoff strategies
+// ── GET /api/debts/payoff/strategies ─────────────────────────────────────────
 router.get("/payoff/strategies", async (req, res) => {
     try {
         const userId = req.user.id;
@@ -206,11 +308,8 @@ router.get("/payoff/strategies", async (req, res) => {
         }
         const debts = await Debt_1.Debt.find({ userId });
         const debtCalcs = debts.map((d) => ({
-            id: d._id.toString(),
-            name: d.name,
-            balance: d.currentBalance,
-            interestRate: d.interestRate,
-            minimumPayment: d.minimumPayment
+            id: d._id.toString(), name: d.name, balance: d.currentBalance,
+            interestRate: d.interestRate, minimumPayment: d.minimumPayment
         }));
         if (debtCalcs.length === 0) {
             return res.json({ avalanche: null, snowball: null, totalDebts: 0, totalMinimumPayment: 0 });
@@ -218,11 +317,7 @@ router.get("/payoff/strategies", async (req, res) => {
         const avalanche = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "avalanche", extraPayment);
         const snowball = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "snowball", extraPayment);
         return res.json({
-            avalanche,
-            snowball,
-            cadence,
-            paymentAmount,
-            extraPayment,
+            avalanche, snowball, cadence, paymentAmount, extraPayment,
             totalDebts: round2(debtCalcs.reduce((sum, d) => sum + d.balance, 0)),
             totalMinimumPayment: round2(cadenceEquivalentMonthly(debtCalcs.reduce((sum, d) => sum + d.minimumPayment, 0), cadence))
         });
@@ -232,6 +327,7 @@ router.get("/payoff/strategies", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
+// ── GET /api/debts/payoff/optimizer ──────────────────────────────────────────
 router.get("/payoff/optimizer", async (req, res) => {
     try {
         const userId = req.user.id;
@@ -242,11 +338,8 @@ router.get("/payoff/optimizer", async (req, res) => {
         }
         const debts = await Debt_1.Debt.find({ userId });
         const debtCalcs = debts.map((d) => ({
-            id: d._id.toString(),
-            name: d.name,
-            balance: d.currentBalance,
-            interestRate: d.interestRate,
-            minimumPayment: d.minimumPayment
+            id: d._id.toString(), name: d.name, balance: d.currentBalance,
+            interestRate: d.interestRate, minimumPayment: d.minimumPayment
         }));
         return res.json(buildPaymentOptimizer(debtCalcs, cadence, paymentAmount));
     }
@@ -255,6 +348,7 @@ router.get("/payoff/optimizer", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
+// ── GET /api/debts/payoff/what-if ─────────────────────────────────────────────
 router.get("/payoff/what-if", async (req, res) => {
     try {
         const userId = req.user.id;
@@ -266,11 +360,8 @@ router.get("/payoff/what-if", async (req, res) => {
         }
         const debts = await Debt_1.Debt.find({ userId });
         const debtCalcs = debts.map((d) => ({
-            id: d._id.toString(),
-            name: d.name,
-            balance: d.currentBalance,
-            interestRate: d.interestRate,
-            minimumPayment: d.minimumPayment
+            id: d._id.toString(), name: d.name, balance: d.currentBalance,
+            interestRate: d.interestRate, minimumPayment: d.minimumPayment
         }));
         const baseline = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "avalanche", 0);
         const scenario = calculatePayoffStrategy(debtCalcs, paymentAmount, cadence, "avalanche", extraPayment);
@@ -288,7 +379,69 @@ router.get("/payoff/what-if", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
-// Get all debts for the logged-in user
+// ── GET /api/debts/detect-from-accounts ──────────────────────────────────────
+// Must be declared before /:id so Express doesn't treat "detect-from-accounts" as an ID.
+router.get("/detect-from-accounts", async (req, res) => {
+    try {
+        const userId = req.user.id;
+        // Find all liability-type accounts
+        const accounts = await Account_1.Account.find({
+            userId,
+            type: { $in: LIABILITY_ACCOUNT_TYPES },
+        }).lean();
+        // Existing debts for duplicate detection
+        const existingDebts = await Debt_1.Debt.find({ userId }).lean();
+        const results = [];
+        for (const account of accounts) {
+            const defaults = DEBT_DEFAULTS[account.type] ?? {
+                debtType: "other",
+                interestRate: 10,
+                termMonths: 60,
+                label: account.type,
+            };
+            // Recalculate current balance from transactions
+            const balance = await calcLiabilityBalance(userId, account._id.toString());
+            // Skip accounts with no outstanding balance
+            if (balance < 1)
+                continue;
+            // Calculate amortized minimum payment
+            const minPayment = amortizedPayment(balance, defaults.interestRate, defaults.termMonths);
+            // Already imported if any existing debt shares a matching name
+            const aName = account.name.toLowerCase().trim();
+            const alreadyImported = existingDebts.some((d) => {
+                const dName = d.name.toLowerCase().trim();
+                return dName === aName || dName.includes(aName) || aName.includes(dName);
+            });
+            const institution = account.institution ?? null;
+            results.push({
+                accountId: account._id.toString(),
+                name: account.name,
+                suggestedName: suggestDebtName(account.name, institution),
+                description: generateDescription(account.type, institution, balance),
+                accountType: account.type,
+                accountTypeLabel: defaults.label,
+                debtType: defaults.debtType,
+                balance,
+                institution,
+                defaultInterestRate: defaults.interestRate,
+                defaultMinPayment: minPayment,
+                alreadyImported,
+            });
+        }
+        // Sort: new items first, then by balance descending
+        results.sort((a, b) => {
+            if (a.alreadyImported !== b.alreadyImported)
+                return a.alreadyImported ? 1 : -1;
+            return b.balance - a.balance;
+        });
+        return res.json(results);
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Failed to detect debts from accounts" });
+    }
+});
+// ── GET /api/debts ────────────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
     try {
         const userId = req.user.id;
@@ -300,14 +453,13 @@ router.get("/", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
-// Get single debt
+// ── GET /api/debts/:id ────────────────────────────────────────────────────────
 router.get("/:id", async (req, res) => {
     try {
         const userId = req.user.id;
         const debt = await Debt_1.Debt.findOne({ _id: req.params.id, userId });
-        if (!debt) {
+        if (!debt)
             return res.status(404).json({ message: "Debt not found" });
-        }
         return res.json(debt);
     }
     catch (err) {
@@ -315,7 +467,7 @@ router.get("/:id", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
-// Create new debt
+// ── POST /api/debts ───────────────────────────────────────────────────────────
 router.post("/", async (req, res) => {
     try {
         const userId = req.user.id;
@@ -327,17 +479,10 @@ router.post("/", async (req, res) => {
             });
         }
         const debt = await Debt_1.Debt.create({
-            userId,
-            name,
-            type,
-            principal,
-            currentBalance,
-            interestRate,
-            minimumPayment,
+            userId, name, type, principal, currentBalance, interestRate, minimumPayment,
             dueScheduleType: (["specific", "monthly", "biweekly"].includes(dueScheduleType) ? dueScheduleType : "specific"),
             dueDate: dueDate ? new Date(dueDate) : undefined,
-            accountNumber,
-            lender
+            accountNumber, lender
         });
         return res.status(201).json(debt);
     }
@@ -346,21 +491,12 @@ router.post("/", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
-// Update debt
+// ── PUT /api/debts/:id ────────────────────────────────────────────────────────
 router.put("/:id", async (req, res) => {
     try {
         const userId = req.user.id;
         const { name, type, principal, currentBalance, interestRate, minimumPayment, dueDate, dueScheduleType, accountNumber, lender } = req.body;
-        const updateData = {
-            name,
-            type,
-            principal,
-            currentBalance,
-            interestRate,
-            minimumPayment,
-            accountNumber,
-            lender
-        };
+        const updateData = { name, type, principal, currentBalance, interestRate, minimumPayment, accountNumber, lender };
         if (["specific", "monthly", "biweekly"].includes(dueScheduleType)) {
             updateData.dueScheduleType = dueScheduleType;
         }
@@ -371,9 +507,8 @@ router.put("/:id", async (req, res) => {
             updateData.dueDate = undefined;
         }
         const debt = await Debt_1.Debt.findOneAndUpdate({ _id: req.params.id, userId }, updateData, { new: true, runValidators: true });
-        if (!debt) {
+        if (!debt)
             return res.status(404).json({ message: "Debt not found" });
-        }
         return res.json(debt);
     }
     catch (err) {
@@ -381,7 +516,7 @@ router.put("/:id", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
-// Make a payment on a debt
+// ── POST /api/debts/:id/payment ───────────────────────────────────────────────
 router.post("/:id/payment", async (req, res) => {
     try {
         const userId = req.user.id;
@@ -390,9 +525,8 @@ router.post("/:id/payment", async (req, res) => {
             return res.status(400).json({ message: "Valid payment amount is required" });
         }
         const debt = await Debt_1.Debt.findOne({ _id: req.params.id, userId });
-        if (!debt) {
+        if (!debt)
             return res.status(404).json({ message: "Debt not found" });
-        }
         debt.currentBalance = Math.max(0, debt.currentBalance - amount);
         await debt.save();
         return res.json(debt);
@@ -402,14 +536,13 @@ router.post("/:id/payment", async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 });
-// Delete debt
+// ── DELETE /api/debts/:id ─────────────────────────────────────────────────────
 router.delete("/:id", async (req, res) => {
     try {
         const userId = req.user.id;
         const debt = await Debt_1.Debt.findOneAndDelete({ _id: req.params.id, userId });
-        if (!debt) {
+        if (!debt)
             return res.status(404).json({ message: "Debt not found" });
-        }
         return res.json({ message: "Debt deleted" });
     }
     catch (err) {

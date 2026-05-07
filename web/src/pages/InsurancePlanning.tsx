@@ -161,7 +161,7 @@ export default function InsurancePlanning() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: "10px", maxWidth: 960 }}>
+    <div className="page">
       <h1>Insurance Planning</h1>
       <p style={{ color: "var(--text-secondary)", marginBottom: "1rem", maxWidth: 680, fontSize: "0.72rem" }}>
         Analyze your life insurance needs using the DIME method, calculate your disability coverage gap,

@@ -1,3 +1,6 @@
+/* TaxPlanning page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
 .tax-planning {
   padding: 0;
   max-width: 1050px;
@@ -7,7 +10,7 @@
 .tax-planning h1 {
   font-size: 0.92rem;
   margin-bottom: 6px;
-  color: #1a1a1a;
+  color: var(--text);
 }
 
 .tax-container {
@@ -18,29 +21,28 @@
 }
 
 @media (max-width: 900px) {
-  .tax-container {
-    grid-template-columns: 1fr;
-  }
+  .tax-container { grid-template-columns: 1fr; }
 }
 
 .tax-section.card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
   padding: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid #007bff;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
 }
 
 .tax-section h2 {
   font-size: 0.82rem;
   margin-bottom: 6px;
-  color: #333;
+  color: var(--text);
 }
 
 .tax-section h3 {
   font-size: 0.75rem;
   margin-bottom: 5px;
-  color: #444;
+  color: var(--text);
 }
 
 /* Forms */
@@ -58,56 +60,29 @@ form {
 .form-group label {
   font-weight: 600;
   margin-bottom: 3px;
-  color: #333;
+  color: var(--text);
   font-size: 0.72rem;
 }
 
 .form-group input,
 .form-group select {
   padding: 5px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.8rem;
   font-family: inherit;
+  background: var(--bg-card);
+  color: var(--text);
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb, 79,70,229), 0.1);
 }
 
-/* Buttons */
-.btn {
-  padding: 0.32rem 0.72rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #545b62;
-}
-
-/* Accounts Grid */
+/* Account Cards */
 .accounts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -115,8 +90,8 @@ form {
 }
 
 .account-card {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border: 2px solid transparent;
+  background: var(--bg);
+  border: 2px solid var(--border);
   border-radius: 8px;
   padding: 10px;
   text-align: center;
@@ -130,8 +105,8 @@ form {
 }
 
 .account-card.selected {
-  border-color: #007bff;
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border-color: var(--primary);
+  background: var(--primary);
   color: white;
 }
 
@@ -158,21 +133,17 @@ form {
 }
 
 /* Account Details */
-.account-details {
-  grid-column: 1 / -1;
-}
+.account-details { grid-column: 1 / -1; }
 
 /* Contribution Room */
 .contribution-room {
-  background: #f9f9f9;
+  background: var(--bg);
   padding: 10px;
   border-radius: 8px;
   margin: 8px 0;
 }
 
-.contribution-room h3 {
-  margin-bottom: 6px;
-}
+.contribution-room h3 { margin-bottom: 6px; }
 
 .room-info {
   display: grid;
@@ -182,38 +153,38 @@ form {
 }
 
 .room-stat {
-  background: white;
+  background: var(--bg-card);
   padding: 8px;
   border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
 }
 
 .room-stat label {
   display: block;
   font-size: 0.7rem;
-  color: #666;
+  color: var(--text-light);
   margin-bottom: 4px;
 }
 
 .room-stat .amount {
   font-size: 0.92rem;
   font-weight: bold;
-  color: #333;
+  color: var(--text);
   margin: 0;
 }
 
 .room-stat.highlight {
   border: 2px solid #28a745;
-  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  background: #d4edda;
 }
 
-.room-stat.highlight .amount {
-  color: #155724;
-}
+[data-theme="dark"] .room-stat.highlight { background: rgba(40,167,69,0.15); }
+
+.room-stat.highlight .amount { color: #155724; }
 
 .recommendation {
-  background: #e7f3ff;
-  border-left: 4px solid #2196F3;
+  background: var(--bg);
+  border-left: 4px solid var(--primary);
   padding: 8px;
   border-radius: 4px;
   margin: 6px 0;
@@ -221,13 +192,13 @@ form {
 
 .recommendation p {
   margin: 0;
-  color: #1565c0;
+  color: var(--text);
   font-size: 0.72rem;
 }
 
 /* Optimization Tips */
 .optimization-tips {
-  background: #f0f8ff;
+  background: var(--bg);
   padding: 10px;
   border-radius: 8px;
   margin: 8px 0;
@@ -253,13 +224,13 @@ form {
 .tip p {
   margin: 0;
   line-height: 1.4;
-  color: #333;
+  color: var(--text);
   font-size: 0.72rem;
 }
 
 /* Optimization Tools */
 .optimization-tools {
-  background: #f5f5f5;
+  background: var(--bg);
   padding: 10px;
   border-radius: 8px;
   margin-top: 8px;
@@ -268,21 +239,21 @@ form {
 .optimization-tools h3 {
   margin-top: 0;
   margin-bottom: 8px;
-  color: #333;
+  color: var(--text);
 }
 
 .tool-section {
-  background: white;
+  background: var(--bg-card);
   padding: 8px;
   border-radius: 6px;
   margin-bottom: 8px;
-  border-left: 3px solid #007bff;
+  border-left: 3px solid var(--primary);
 }
 
 .tool-section h4 {
   margin-top: 0;
   margin-bottom: 6px;
-  color: #333;
+  color: var(--text);
   font-size: 0.7rem;
 }
 
@@ -301,7 +272,7 @@ form {
 
 .input-group label {
   font-weight: 500;
-  color: #333;
+  color: var(--text);
   font-size: 0.72rem;
 }
 
@@ -309,10 +280,12 @@ form {
 .input-group input[type="number"],
 .input-group select {
   padding: 5px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.8rem;
   font-family: inherit;
+  background: var(--bg-card);
+  color: var(--text);
 }
 
 .input-group input[type="range"] {
@@ -321,11 +294,16 @@ form {
 }
 
 .calculation-result {
-  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  background: #e8f5e9;
   border: 1px solid #4caf50;
   border-radius: 6px;
   padding: 8px;
   margin-top: 6px;
+}
+
+[data-theme="dark"] .calculation-result {
+  background: rgba(76,175,80,0.12);
+  border-color: rgba(76,175,80,0.4);
 }
 
 .calculation-result p {
@@ -334,9 +312,9 @@ form {
   font-size: 0.72rem;
 }
 
-.calculation-result p strong {
-  font-weight: 600;
-}
+[data-theme="dark"] .calculation-result p { color: #81c784; }
+
+.calculation-result p strong { font-weight: 600; }
 
 .calculation-result em {
   display: block;
@@ -346,21 +324,10 @@ form {
   font-size: 0.7rem;
 }
 
+[data-theme="dark"] .calculation-result em { color: #a5d6a7; }
+
 /* Responsive */
 @media (max-width: 600px) {
-  .tax-planning {
-    padding: 10px;
-  }
-
-  .tax-planning h1 {
-    font-size: 1.8rem;
-  }
-
-  .accounts-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .room-info {
-    grid-template-columns: 1fr;
-  }
+  .accounts-grid { grid-template-columns: 1fr; }
+  .room-info { grid-template-columns: 1fr; }
 }

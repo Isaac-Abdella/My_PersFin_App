@@ -1,0 +1,280 @@
+/* MLInsights page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.ml-insights-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── Page header ───────────────────────────── */
+.ml-page-header {
+  margin-bottom: 16px;
+}
+
+.ml-page-header h1 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+}
+
+.ml-page-header p {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin: 4px 0 0;
+}
+
+/* ── Error notice ──────────────────────────── */
+.ml-error-notice {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.78rem;
+  color: #dc2626;
+}
+
+[data-theme="dark"] .ml-error-notice {
+  background: #450a0a;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+/* ── Section cards ─────────────────────────── */
+.ml-section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.ml-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ml-section-header h2 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+}
+
+.ml-section-desc {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  margin: 2px 0 0;
+}
+
+.ml-section-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Select ─────────────────────────────────── */
+.ml-select {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: inherit;
+}
+
+/* ── Run buttons ────────────────────────────── */
+.ml-run-btn {
+  font-size: 0.75rem;
+  padding: 5px 16px;
+  border-radius: 6px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.ml-run-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+.ml-run-btn.forecast { background: #4f46e5; }
+.ml-run-btn.anomaly  { background: #dc2626; }
+.ml-run-btn.budget   { background: #059669; }
+
+/* ── Category pills ─────────────────────────── */
+.ml-cat-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ml-cat-pill {
+  font-size: 0.7rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.ml-cat-pill.active {
+  background: #4f46e5;
+  color: #fff;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+
+.ml-cat-pill.inactive {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 400;
+}
+
+/* ── Chart note ─────────────────────────────── */
+.ml-chart-note {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: var(--text-light);
+}
+
+.ml-empty-text {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 0;
+}
+
+/* ── Anomaly stat mini-cards ────────────────── */
+.ml-stats-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.ml-stat-mini {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+}
+
+.ml-stat-mini-label {
+  font-size: 0.65rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ml-stat-mini-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+/* ── Tables ─────────────────────────────────── */
+.ml-table-wrap {
+  overflow-x: auto;
+}
+
+.ml-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.ml-table th {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--text-light);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.ml-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ml-table .td-nowrap  { white-space: nowrap; }
+.ml-table .td-bold    { font-weight: 600; }
+.ml-table .td-muted   { color: var(--text-light); }
+
+.ml-table .td-amount {
+  white-space: nowrap;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.ml-table .td-desc {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ml-table .td-reason {
+  color: var(--text-light);
+  font-size: 0.7rem;
+}
+
+/* ── Anomaly score badge ─────────────────────── */
+.ml-anomaly-score {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+.ml-anomaly-score.high   { background: #fef2f2; color: #dc2626; }
+.ml-anomaly-score.medium { background: #fefce8; color: #854d0e; }
+
+[data-theme="dark"] .ml-anomaly-score.high   { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .ml-anomaly-score.medium { background: #422006; color: #fde68a; }
+
+/* ── Confidence / level badge ───────────────── */
+.ml-badge {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.ml-badge.high   { background: #f0fdf4; color: #059669; }
+.ml-badge.medium { background: #fefce8; color: #854d0e; }
+.ml-badge.low    { background: #fef2f2; color: #dc2626; }
+
+[data-theme="dark"] .ml-badge.high   { background: #052e16; color: #4ade80; }
+[data-theme="dark"] .ml-badge.medium { background: #422006; color: #fde68a; }
+[data-theme="dark"] .ml-badge.low    { background: #450a0a; color: #fca5a5; }
+
+/* ── Budget table extras ─────────────────────── */
+.ml-budget-note {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  margin: 0 0 10px;
+}
+
+.ml-table td.ml-budget-suggested {
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+/* ── Status messages ─────────────────────────── */
+.ml-no-anomaly {
+  font-size: 0.75rem;
+  color: var(--success);
+  margin: 0;
+}
+
+.ml-anomaly-message {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-top: 6px;
+  margin-bottom: 0;
+}

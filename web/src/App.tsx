@@ -118,7 +118,7 @@ const NAV_GROUPS = [
     label: "Reports & Tools",
     items: [
       { to: "/reports",          label: "Reports & Export"  },
-      { to: "/import",           label: "Import CSV"        },
+      { to: "/import",           label: "Import"            },
       { to: "/bank-connections", label: "Bank Connections"  },
     ],
   },

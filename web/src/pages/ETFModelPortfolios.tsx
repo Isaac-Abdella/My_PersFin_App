@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import "./ETFModelPortfolios.css";
 
 interface AssetLocationRule {
   assetType: string;
@@ -96,13 +97,13 @@ const ALL_IN_ONE_ETFS = [
   },
 ];
 
+const FUND_COLORS = ["var(--primary)", "#16a34a", "#94a3b8", "#d97706"];
+
 const COUCH_POTATO_PORTFOLIOS = [
   {
     name: "One-Fund Solution",
     complexity: "Beginner",
-    funds: [
-      { symbol: "XEQT or VEQT", pct: 100, type: "All-in-One Equity" },
-    ],
+    funds: [{ symbol: "XEQT or VEQT", pct: 100, type: "All-in-One Equity" }],
     description: "Buy one ETF, set automatic contributions, rebalance never. Perfect for set-and-forget investors.",
     pros: ["Zero rebalancing needed", "Ultra-simple", "Globally diversified"],
     cons: ["Slightly higher MER than DIY", "Less control over asset location"],
@@ -134,6 +135,16 @@ const COUCH_POTATO_PORTFOLIOS = [
   },
 ];
 
+const DEFAULT_RULES: AssetLocationRule[] = [
+  { assetType: "High-growth equity ETFs (XEQT, VEQT)", bestAccount: "TFSA", worstAccount: "Non-Registered", reason: "Tax-free growth most valuable for highest-returning assets", priority: 1 },
+  { assetType: "US equity ETFs (VFV, XSP)", bestAccount: "RRSP", worstAccount: "TFSA", reason: "Canada–US treaty eliminates 15% withholding tax inside RRSP only", priority: 1 },
+  { assetType: "Canadian bond ETFs (ZAG, VAB)", bestAccount: "RRSP", worstAccount: "Non-Registered", reason: "Interest income is 100% taxable — defer in RRSP", priority: 1 },
+  { assetType: "Canadian equity ETFs (VCN, ZCN)", bestAccount: "Non-Reg or TFSA", worstAccount: "RRSP", reason: "Eligible for dividend tax credit in non-registered accounts", priority: 2 },
+  { assetType: "Canadian REITs (ZRE, XRE)", bestAccount: "RRSP or TFSA", worstAccount: "Non-Registered", reason: "Distributions are fully taxable — shelter in registered accounts", priority: 1 },
+  { assetType: "International equity ETFs (XEF, VIU)", bestAccount: "TFSA or Non-Reg", worstAccount: "RRSP", reason: "Foreign withholding applies in RRSP for non-US countries", priority: 2 },
+  { assetType: "GICs / HISA", bestAccount: "TFSA", worstAccount: "Non-Registered", reason: "Interest is 100% taxable — TFSA converts it to tax-free income", priority: 1 },
+];
+
 export default function ETFModelPortfolios() {
   const [tab, setTab] = useState<"all-in-one" | "couch-potato" | "asset-location">("all-in-one");
   const [accountValues, setAccountValues] = useState({ tfsaValue: "", rrspValue: "", fhsaValue: "", nonRegValue: "" });
@@ -157,71 +168,59 @@ export default function ETFModelPortfolios() {
     finally { setLoadingLocation(false); }
   };
 
-  const tabStyle = (t: string): React.CSSProperties => ({
-    padding: "0.5rem 1.25rem",
-    border: "none",
-    borderBottom: tab === t ? "2px solid var(--primary)" : "2px solid transparent",
-    background: "none",
-    cursor: "pointer",
-    fontWeight: tab === t ? 700 : 400,
-    color: tab === t ? "var(--primary)" : "var(--text-secondary)",
-    fontSize: "0.95rem",
-  });
+  const displayRules = locationResult?.rules || DEFAULT_RULES;
 
   return (
-    <div style={{ padding: "2rem", maxWidth: 1000 }}>
-      <h1>Canadian ETF Model Portfolios</h1>
-      <p style={{ color: "var(--text-secondary)", marginBottom: "2rem", maxWidth: 680 }}>
-        Compare all-in-one ETFs, explore Couch Potato strategies, and optimize which assets
-        belong in which registered account to maximize tax efficiency.
-      </p>
+    <div className="etf-container">
+      <div className="etf-header">
+        <h1>Canadian ETF Model Portfolios</h1>
+        <p>
+          Compare all-in-one ETFs, explore Couch Potato strategies, and optimize which assets
+          belong in which registered account to maximize tax efficiency.
+        </p>
+      </div>
 
-      <div style={{ borderBottom: "1px solid var(--border)", marginBottom: "1.5rem", display: "flex" }}>
-        <button style={tabStyle("all-in-one")} onClick={() => setTab("all-in-one")}>All-in-One ETFs</button>
-        <button style={tabStyle("couch-potato")} onClick={() => setTab("couch-potato")}>Couch Potato Portfolios</button>
-        <button style={tabStyle("asset-location")} onClick={() => setTab("asset-location")}>Asset Location Guide</button>
+      <div className="etf-tabs">
+        <button className={`etf-tab${tab === "all-in-one" ? " active" : ""}`} onClick={() => setTab("all-in-one")}>All-in-One ETFs</button>
+        <button className={`etf-tab${tab === "couch-potato" ? " active" : ""}`} onClick={() => setTab("couch-potato")}>Couch Potato Portfolios</button>
+        <button className={`etf-tab${tab === "asset-location" ? " active" : ""}`} onClick={() => setTab("asset-location")}>Asset Location Guide</button>
       </div>
 
       {/* ── All-in-One ETFs ── */}
       {tab === "all-in-one" && (
         <div>
-          <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "0.9rem 1.25rem", marginBottom: "1.5rem", fontSize: "0.88rem" }}>
+          <div className="info-banner">
             All-in-one ETFs hold hundreds of underlying funds and automatically rebalance internally.
             MERs shown are approximate 2024 values. Data is for educational purposes — always verify with the fund provider.
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+          <div className="etf-cards-grid">
             {ALL_IN_ONE_ETFS.map((etf) => (
-              <div key={etf.symbol} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.25rem" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+              <div key={etf.symbol} className="etf-card">
+                <div className="etf-card-top">
                   <div>
-                    <span style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--primary)" }}>{etf.symbol}</span>
-                    <span style={{ marginLeft: "0.5rem", fontSize: "0.72rem", background: etf.riskColor, color: "white", padding: "2px 8px", borderRadius: 8 }}>
-                      {etf.riskLevel}
-                    </span>
+                    <span className="etf-symbol">{etf.symbol}</span>
+                    <span className="risk-badge" style={{ background: etf.riskColor }}>{etf.riskLevel}</span>
                   </div>
-                  <div style={{ textAlign: "right", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                    MER {etf.mer}%
-                  </div>
+                  <div className="etf-mer">MER {etf.mer}%</div>
                 </div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>{etf.provider}</div>
-                <p style={{ fontSize: "0.84rem", color: "var(--text-secondary)", lineHeight: 1.5, margin: "0 0 0.75rem" }}>{etf.description}</p>
+                <div className="etf-provider">{etf.provider}</div>
+                <p className="etf-description">{etf.description}</p>
 
-                {/* Allocation bar */}
-                <div style={{ marginBottom: "0.75rem" }}>
-                  <div style={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", marginBottom: "0.35rem" }}>
-                    <div style={{ width: `${etf.equity}%`, background: "var(--primary)" }} title="Equity" />
-                    <div style={{ width: `${etf.bonds}%`, background: "#94a3b8" }} title="Bonds" />
+                <div className="alloc-bar-wrap">
+                  <div className="alloc-bar">
+                    <div className="alloc-bar-equity" style={{ width: `${etf.equity}%` }} title="Equity" />
+                    <div className="alloc-bar-bonds" style={{ width: `${etf.bonds}%` }} title="Bonds" />
                   </div>
-                  <div style={{ display: "flex", gap: "1rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                    <span style={{ color: "var(--primary)" }}>■ {etf.equity}% Equity</span>
-                    {etf.bonds > 0 && <span style={{ color: "#94a3b8" }}>■ {etf.bonds}% Bonds</span>}
+                  <div className="alloc-legend">
+                    <span className="equity">■ {etf.equity}% Equity</span>
+                    {etf.bonds > 0 && <span className="bonds">■ {etf.bonds}% Bonds</span>}
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.25rem", fontSize: "0.75rem" }}>
+                <div className="etf-holdings-grid">
                   {Object.entries(etf.holdings).map(([k, v]) => (
-                    <div key={k} style={{ color: "var(--text-secondary)" }}>
+                    <div key={k}>
                       <span style={{ textTransform: "capitalize" }}>{k.replace(/([A-Z])/g, " $1")}: </span>
                       <strong>{v}%</strong>
                     </div>
@@ -231,24 +230,26 @@ export default function ETFModelPortfolios() {
             ))}
           </div>
 
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.25rem", marginTop: "1.5rem" }}>
-            <h3 style={{ marginTop: 0 }}>Quick Comparison</h3>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem" }}>
+          <div className="table-card">
+            <div className="table-card-header">
+              <h3>Quick Comparison</h3>
+            </div>
+            <table className="inv-table">
               <thead>
-                <tr style={{ background: "var(--background)" }}>
+                <tr>
                   {["Symbol", "Equity %", "Bonds %", "MER", "Best For"].map((h) => (
-                    <th key={h} style={{ padding: "0.6rem 0.9rem", textAlign: "left", borderBottom: "1px solid var(--border)", fontWeight: 600 }}>{h}</th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {ALL_IN_ONE_ETFS.map((e, i) => (
-                  <tr key={e.symbol} style={{ background: i % 2 === 0 ? "var(--surface)" : "var(--background)" }}>
-                    <td style={{ padding: "0.5rem 0.9rem", borderBottom: "1px solid var(--border)", fontWeight: 700, color: "var(--primary)" }}>{e.symbol}</td>
-                    <td style={{ padding: "0.5rem 0.9rem", borderBottom: "1px solid var(--border)" }}>{e.equity}%</td>
-                    <td style={{ padding: "0.5rem 0.9rem", borderBottom: "1px solid var(--border)" }}>{e.bonds}%</td>
-                    <td style={{ padding: "0.5rem 0.9rem", borderBottom: "1px solid var(--border)" }}>{e.mer}%</td>
-                    <td style={{ padding: "0.5rem 0.9rem", borderBottom: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: "0.82rem" }}>{e.riskLevel} investors</td>
+                  <tr key={e.symbol} className={i % 2 !== 0 ? "row-alt" : ""}>
+                    <td style={{ fontWeight: 700, color: "var(--primary)" }}>{e.symbol}</td>
+                    <td>{e.equity}%</td>
+                    <td>{e.bonds}%</td>
+                    <td>{e.mer}%</td>
+                    <td style={{ color: "var(--text-light)", fontSize: "0.72rem" }}>{e.riskLevel} investors</td>
                   </tr>
                 ))}
               </tbody>
@@ -260,53 +261,40 @@ export default function ETFModelPortfolios() {
       {/* ── Couch Potato ── */}
       {tab === "couch-potato" && (
         <div>
-          <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "0.9rem 1.25rem", marginBottom: "1.5rem", fontSize: "0.88rem" }}>
+          <div className="info-banner">
             The <strong>Canadian Couch Potato</strong> strategy, popularized by Dan Bortolotti, uses simple low-cost index ETFs
             to match the market rather than beat it — beating most actively managed funds over the long run.
           </div>
 
           {COUCH_POTATO_PORTFOLIOS.map((p) => (
-            <div key={p.name} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.5rem", marginBottom: "1rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
-                <h3 style={{ margin: 0 }}>{p.name}</h3>
-                <span style={{ fontSize: "0.75rem", background: "var(--background)", border: "1px solid var(--border)", padding: "2px 10px", borderRadius: 8 }}>
-                  {p.complexity}
-                </span>
+            <div key={p.name} className="portfolio-card">
+              <div className="portfolio-card-title">
+                <h3>{p.name}</h3>
+                <span className="complexity-badge">{p.complexity}</span>
               </div>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginBottom: "1rem" }}>{p.description}</p>
+              <p className="portfolio-description">{p.description}</p>
 
-              {/* Fund allocation bars */}
-              <div style={{ marginBottom: "1rem" }}>
-                <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden", marginBottom: "0.4rem" }}>
-                  {p.funds.map((f, i) => {
-                    const colors = ["var(--primary)", "#16a34a", "#94a3b8", "#d97706"];
-                    return <div key={f.symbol} style={{ width: `${f.pct}%`, background: colors[i % colors.length] }} title={`${f.symbol}: ${f.pct}%`} />;
-                  })}
-                </div>
-                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                  {p.funds.map((f, i) => {
-                    const colors = ["var(--primary)", "#16a34a", "#94a3b8", "#d97706"];
-                    return (
-                      <div key={f.symbol} style={{ fontSize: "0.78rem", color: colors[i % colors.length] }}>
-                        ■ <strong>{f.symbol}</strong> — {f.type} ({f.pct}%)
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="fund-alloc-bar">
+                {p.funds.map((f, i) => (
+                  <div key={f.symbol} style={{ width: `${f.pct}%`, background: FUND_COLORS[i % FUND_COLORS.length] }} title={`${f.symbol}: ${f.pct}%`} />
+                ))}
+              </div>
+              <div className="fund-legend">
+                {p.funds.map((f, i) => (
+                  <div key={f.symbol} className="fund-legend-item" style={{ color: FUND_COLORS[i % FUND_COLORS.length] }}>
+                    ■ <strong>{f.symbol}</strong> — {f.type} ({f.pct}%)
+                  </div>
+                ))}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="pros-cons">
                 <div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.4rem", color: "var(--success)" }}>Pros</div>
-                  <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
-                    {p.pros.map((pr) => <li key={pr} style={{ fontSize: "0.84rem", color: "var(--text-secondary)", marginBottom: "0.25rem" }}>{pr}</li>)}
-                  </ul>
+                  <div className="pros-cons-title pros">Pros</div>
+                  <ul>{p.pros.map((pr) => <li key={pr}>{pr}</li>)}</ul>
                 </div>
                 <div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.4rem", color: "#d97706" }}>Cons</div>
-                  <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
-                    {p.cons.map((c) => <li key={c} style={{ fontSize: "0.84rem", color: "var(--text-secondary)", marginBottom: "0.25rem" }}>{c}</li>)}
-                  </ul>
+                  <div className="pros-cons-title cons">Cons</div>
+                  <ul>{p.cons.map((c) => <li key={c}>{c}</li>)}</ul>
                 </div>
               </div>
             </div>
@@ -317,12 +305,10 @@ export default function ETFModelPortfolios() {
       {/* ── Asset Location ── */}
       {tab === "asset-location" && (
         <div>
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "1.5rem", marginBottom: "1.5rem" }}>
-            <h3 style={{ marginTop: 0 }}>Your Account Values (optional)</h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginBottom: "1rem" }}>
-              Enter your account balances for a personalized asset location summary.
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+          <div className="section-card">
+            <h3>Your Account Values (optional)</h3>
+            <p>Enter your account balances for a personalized asset location summary.</p>
+            <div className="account-inputs">
               {[
                 { key: "tfsaValue", label: "TFSA Total ($)" },
                 { key: "rrspValue", label: "RRSP Total ($)" },
@@ -347,48 +333,33 @@ export default function ETFModelPortfolios() {
           </div>
 
           {locationResult && locationResult.accounts.length > 0 && (
-            <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "0.9rem 1.25rem", marginBottom: "1.5rem", fontSize: "0.88rem" }}>
+            <div className="location-summary">
               <strong>Your registered accounts:</strong>{" "}
               {locationResult.accounts.map((a: any) => `${a.type} ($${a.value.toLocaleString()})`).join(" · ")}
-              {" — Total "}
-              <strong>${locationResult.total.toLocaleString()}</strong>
+              {" — Total "}<strong>${locationResult.total.toLocaleString()}</strong>
             </div>
           )}
 
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-              <h3 style={{ margin: 0 }}>Canadian Tax-Law Asset Location Rules</h3>
-              <p style={{ margin: "0.3rem 0 0", fontSize: "0.84rem", color: "var(--text-secondary)" }}>
-                Priority 1 = strong preference; Priority 2 = moderate preference based on Canadian tax rules.
-              </p>
+          <div className="table-card">
+            <div className="table-card-header">
+              <h3>Canadian Tax-Law Asset Location Rules</h3>
+              <p>Priority 1 = strong preference; Priority 2 = moderate preference based on Canadian tax rules.</p>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem" }}>
+            <table className="inv-table">
               <thead>
-                <tr style={{ background: "var(--background)" }}>
+                <tr>
                   {["Asset Type", "Best Account", "Avoid", "Reason"].map((h) => (
-                    <th key={h} style={{ padding: "0.6rem 0.9rem", textAlign: "left", borderBottom: "1px solid var(--border)", fontWeight: 600 }}>{h}</th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {(locationResult?.rules || [
-                  { assetType: "High-growth equity ETFs (XEQT, VEQT)", bestAccount: "TFSA", worstAccount: "Non-Registered", reason: "Tax-free growth most valuable for highest-returning assets", priority: 1 },
-                  { assetType: "US equity ETFs (VFV, XSP)", bestAccount: "RRSP", worstAccount: "TFSA", reason: "Canada–US treaty eliminates 15% withholding tax inside RRSP only", priority: 1 },
-                  { assetType: "Canadian bond ETFs (ZAG, VAB)", bestAccount: "RRSP", worstAccount: "Non-Registered", reason: "Interest income is 100% taxable — defer in RRSP", priority: 1 },
-                  { assetType: "Canadian equity ETFs (VCN, ZCN)", bestAccount: "Non-Reg or TFSA", worstAccount: "RRSP", reason: "Eligible for dividend tax credit in non-registered accounts", priority: 2 },
-                  { assetType: "Canadian REITs (ZRE, XRE)", bestAccount: "RRSP or TFSA", worstAccount: "Non-Registered", reason: "Distributions are fully taxable — shelter in registered accounts", priority: 1 },
-                  { assetType: "International equity ETFs (XEF, VIU)", bestAccount: "TFSA or Non-Reg", worstAccount: "RRSP", reason: "Foreign withholding applies in RRSP for non-US countries", priority: 2 },
-                  { assetType: "GICs / HISA", bestAccount: "TFSA", worstAccount: "Non-Registered", reason: "Interest is 100% taxable — TFSA converts it to tax-free income", priority: 1 },
-                ]).map((r: AssetLocationRule, i: number) => (
-                  <tr key={r.assetType} style={{ background: i % 2 === 0 ? "var(--surface)" : "var(--background)" }}>
-                    <td style={{ padding: "0.6rem 0.9rem", borderBottom: "1px solid var(--border)", fontWeight: 500 }}>{r.assetType}</td>
-                    <td style={{ padding: "0.6rem 0.9rem", borderBottom: "1px solid var(--border)" }}>
-                      <span style={{ background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: 6, fontSize: "0.78rem", fontWeight: 600 }}>{r.bestAccount}</span>
-                    </td>
-                    <td style={{ padding: "0.6rem 0.9rem", borderBottom: "1px solid var(--border)" }}>
-                      <span style={{ background: "#fee2e2", color: "#b91c1c", padding: "2px 8px", borderRadius: 6, fontSize: "0.78rem" }}>{r.worstAccount}</span>
-                    </td>
-                    <td style={{ padding: "0.6rem 0.9rem", borderBottom: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: "0.82rem" }}>{r.reason}</td>
+                {displayRules.map((r, i) => (
+                  <tr key={r.assetType} className={i % 2 !== 0 ? "row-alt" : ""}>
+                    <td style={{ fontWeight: 500 }}>{r.assetType}</td>
+                    <td><span className="badge-best">{r.bestAccount}</span></td>
+                    <td><span className="badge-avoid">{r.worstAccount}</span></td>
+                    <td style={{ color: "var(--text-light)", fontSize: "0.72rem" }}>{r.reason}</td>
                   </tr>
                 ))}
               </tbody>

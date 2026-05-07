@@ -1,0 +1,375 @@
+/* InflationTracker page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.inflation-container {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.inflation-container h1 {
+  font-size: 0.92rem;
+  color: var(--text);
+  margin: 0 0 6px 0;
+}
+
+.inflation-intro {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 0 0 12px 0;
+  max-width: 680px;
+}
+
+/* ── Live CPI banner ───────────────────────── */
+.cpi-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.cpi-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-bottom: 2px;
+}
+
+.cpi-stat-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.cpi-stat-value.large {
+  font-size: 1.5rem;
+}
+
+.cpi-source-note {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--text-light);
+  max-width: 220px;
+}
+
+.cpi-loading {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+/* ── Two-column layout ─────────────────────── */
+.two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ── CPI table card ────────────────────────── */
+.cpi-table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-card-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-card-header h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.cpi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.cpi-table th {
+  background: var(--primary);
+  color: white;
+  padding: 6px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.cpi-table td {
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cpi-table tr.row-even td { background: var(--bg-card); }
+.cpi-table tr.row-odd td  { background: var(--bg); }
+
+.cpi-rate-bar-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+.cpi-rate-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+/* ── Purchasing power ──────────────────────── */
+.power-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.power-card h3 {
+  margin: 0 0 4px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.power-card-intro {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin: 0 0 10px 0;
+}
+
+.power-range-label {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.power-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.power-stat {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.power-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+}
+
+.power-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.power-year-list {
+  margin-top: 10px;
+}
+
+.power-year-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  margin-bottom: 2px;
+}
+
+.power-year-label { color: var(--text-light); }
+.power-year-inflation { }
+.power-year-value { }
+
+/* ── Info note ─────────────────────────────── */
+.info-note {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  color: #1e40af;
+}
+
+[data-theme="dark"] .info-note {
+  background: rgba(30, 64, 175, 0.12);
+  border-color: rgba(147, 197, 253, 0.3);
+  color: #93c5fd;
+}
+
+/* ── Budget vs Inflation table ─────────────── */
+.budget-table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.budget-table-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.budget-table-header h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.budget-table-header p {
+  margin: 3px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-light);
+}
+
+.budget-table-wrap {
+  padding: 10px 12px;
+}
+
+.budget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.budget-table th {
+  background: var(--primary);
+  color: white;
+  padding: 6px 7px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.budget-table td {
+  padding: 4px 5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.budget-table tr.row-even td { background: var(--bg-card); }
+.budget-table tr.row-odd td  { background: var(--bg); }
+
+.budget-inline-input {
+  width: 100%;
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-family: inherit;
+}
+
+.budget-inline-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.budget-select {
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-family: inherit;
+}
+
+.amount-input {
+  width: 80px;
+}
+
+.remove-row-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger);
+  font-size: 0.82rem;
+  padding: 0 4px;
+}
+
+/* ── Budget totals bar ─────────────────────── */
+.budget-totals {
+  border-top: 2px solid var(--border);
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--bg);
+}
+
+.budget-total-item { }
+
+.budget-total-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+}
+
+.budget-total-value {
+  font-size: 1.0rem;
+  font-weight: 700;
+}
+
+.budget-totals-note {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-light);
+  align-self: center;
+  max-width: 230px;
+}
+
+/* ── Tips grid ─────────────────────────────── */
+.tips-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.tips-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+.tip-card {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.tip-category {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tip-text {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+/* ── Responsive ────────────────────────────── */
+@media (max-width: 768px) {
+  .two-col-grid { grid-template-columns: 1fr; }
+  .power-summary-grid { grid-template-columns: 1fr; }
+}

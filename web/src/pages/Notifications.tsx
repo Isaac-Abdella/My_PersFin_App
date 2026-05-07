@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import './Notifications.css';
 
 type AlertCategory = "rrsp" | "tfsa" | "bill" | "budget" | "net_worth" | "spending" | "automation";
 type Severity = "info" | "warning" | "critical";
@@ -34,10 +35,10 @@ const CATEGORY_COLORS: Record<AlertCategory, string> = {
   automation: "#6b7280",
 };
 
-const SEVERITY_STYLES: Record<Severity, { bg: string; border: string; icon: string }> = {
-  info: { bg: "#eff6ff", border: "#bfdbfe", icon: "ℹ️" },
-  warning: { bg: "#fffbeb", border: "#fde68a", icon: "⚠️" },
-  critical: { bg: "#fef2f2", border: "#fecaca", icon: "🔴" },
+const SEV_ICONS: Record<Severity, string> = {
+  info: "ℹ️",
+  warning: "⚠️",
+  critical: "🔴",
 };
 
 export default function Notifications() {
@@ -100,70 +101,44 @@ export default function Notifications() {
   const categories: (AlertCategory | "all")[] = ["all", "rrsp", "tfsa", "bill", "budget", "net_worth", "spending", "automation"];
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+    <div className="notifications-container">
+      <div className="notif-page-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700 }}>Notifications</h1>
+          <h1>Notifications</h1>
           {unreadCount > 0 && (
-            <span style={{ fontSize: 14, color: "#6b7280" }}>{unreadCount} unread</span>
+            <span className="notif-unread-count">{unreadCount} unread</span>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={refresh}
-            disabled={refreshing}
-            style={{
-              padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db",
-              background: "white", cursor: "pointer", fontSize: 13,
-            }}
-          >
+        <div className="notif-header-actions">
+          <button className="notif-action-btn" onClick={refresh} disabled={refreshing}>
             {refreshing ? "Refreshing…" : "Refresh Alerts"}
           </button>
           {unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              style={{
-                padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db",
-                background: "white", cursor: "pointer", fontSize: 13,
-              }}
-            >
+            <button className="notif-action-btn" onClick={markAllRead}>
               Mark All Read
             </button>
           )}
           {notifications.length > 0 && (
-            <button
-              onClick={dismissAll}
-              style={{
-                padding: "8px 14px", borderRadius: 8, border: "1px solid #fecaca",
-                background: "#fef2f2", color: "#dc2626", cursor: "pointer", fontSize: 13,
-              }}
-            >
+            <button className="notif-action-btn danger" onClick={dismissAll}>
               Dismiss All
             </button>
           )}
         </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div className="notif-filters">
+        <div className="notif-pills">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
-              style={{
-                padding: "5px 12px", borderRadius: 20, fontSize: 13, cursor: "pointer",
-                border: filterCategory === cat ? "2px solid #2563eb" : "1px solid #d1d5db",
-                background: filterCategory === cat ? "#eff6ff" : "white",
-                color: filterCategory === cat ? "#2563eb" : "#374151",
-                fontWeight: filterCategory === cat ? 600 : 400,
-              }}
+              className={`notif-pill${filterCategory === cat ? " active" : ""}`}
             >
               {cat === "all" ? "All" : CATEGORY_LABELS[cat as AlertCategory]}
             </button>
           ))}
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", marginLeft: "auto" }}>
+        <label className="notif-unread-filter">
           <input
             type="checkbox"
             checked={filterUnread}
@@ -173,93 +148,59 @@ export default function Notifications() {
         </label>
       </div>
 
-      {/* List */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: 48, color: "#9ca3af" }}>Loading…</div>
+        <div className="notif-loading">Loading…</div>
       ) : notifications.length === 0 ? (
-        <div style={{
-          textAlign: "center", padding: 48, background: "#f9fafb",
-          borderRadius: 12, border: "1px dashed #d1d5db",
-        }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
-          <div style={{ fontSize: 16, color: "#6b7280" }}>No notifications</div>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginTop: 6 }}>
-            Click "Refresh Alerts" to check for new alerts
-          </div>
+        <div className="notif-empty-state">
+          <div className="notif-empty-icon">🔔</div>
+          <p>No notifications</p>
+          <p className="notif-empty-hint">Click "Refresh Alerts" to check for new alerts</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {notifications.map((n) => {
-            const sev = SEVERITY_STYLES[n.severity];
-            return (
-              <div
-                key={n._id}
-                style={{
-                  background: n.isRead ? "white" : sev.bg,
-                  border: `1px solid ${n.isRead ? "#e5e7eb" : sev.border}`,
-                  borderRadius: 10,
-                  padding: "14px 16px",
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "flex-start",
-                  cursor: n.isRead ? "default" : "pointer",
-                }}
-                onClick={() => { if (!n.isRead) markRead(n._id); }}
-              >
-                <div style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{sev.icon}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span
-                      style={{
-                        fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10,
-                        background: CATEGORY_COLORS[n.category] + "20",
-                        color: CATEGORY_COLORS[n.category],
-                        textTransform: "uppercase", letterSpacing: "0.05em",
-                      }}
-                    >
-                      {CATEGORY_LABELS[n.category]}
-                    </span>
-                    {!n.isRead && (
-                      <span style={{
-                        width: 8, height: 8, borderRadius: "50%", background: "#2563eb",
-                        display: "inline-block", flexShrink: 0,
-                      }} />
-                    )}
-                    <span style={{ fontSize: 12, color: "#9ca3af", marginLeft: "auto" }}>
-                      {new Date(n.createdAt).toLocaleDateString("en-CA", {
-                        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  <div style={{ fontWeight: n.isRead ? 500 : 700, fontSize: 14, marginBottom: 4 }}>
-                    {n.title}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>{n.message}</div>
+        <div className="notif-list">
+          {notifications.map((n) => (
+            <div
+              key={n._id}
+              className={`notif-item${!n.isRead ? ` unread sev-${n.severity}` : ""}`}
+              onClick={() => { if (!n.isRead) markRead(n._id); }}
+            >
+              <div className="notif-icon">{SEV_ICONS[n.severity]}</div>
+              <div className="notif-body">
+                <div className="notif-meta-row">
+                  <span
+                    className="notif-category-badge"
+                    style={{
+                      background: CATEGORY_COLORS[n.category] + "20",
+                      color: CATEGORY_COLORS[n.category],
+                    }}
+                  >
+                    {CATEGORY_LABELS[n.category]}
+                  </span>
+                  {!n.isRead && <span className="notif-unread-dot" />}
+                  <span className="notif-time">
+                    {new Date(n.createdAt).toLocaleDateString("en-CA", {
+                      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); dismiss(n._id); }}
-                  title="Dismiss"
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "#9ca3af", fontSize: 18, lineHeight: 1, flexShrink: 0,
-                    padding: "0 4px",
-                  }}
-                >
-                  ×
-                </button>
+                <div className={`notif-title${!n.isRead ? " unread" : ""}`}>{n.title}</div>
+                <div className="notif-message">{n.message}</div>
               </div>
-            );
-          })}
+              <button
+                className="notif-dismiss-btn"
+                onClick={(e) => { e.stopPropagation(); dismiss(n._id); }}
+                title="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Legend */}
-      <div style={{
-        marginTop: 32, padding: 16, background: "#f9fafb", borderRadius: 10,
-        border: "1px solid #e5e7eb",
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "#374151" }}>Alert Types</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+      <div className="notif-legend">
+        <div className="notif-legend-title">Alert Types</div>
+        <div className="notif-legend-grid">
           {[
             { icon: "⚠️", label: "RRSP room running low (< $500 remaining)" },
             { icon: "🔴", label: "TFSA over-contribution detected" },
@@ -270,9 +211,9 @@ export default function Notifications() {
             { icon: "ℹ️", label: "Monthly net worth snapshot taken" },
             { icon: "ℹ️", label: "Budget rollover available" },
           ].map((item, i) => (
-            <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12 }}>
+            <div key={i} className="notif-legend-item">
               <span>{item.icon}</span>
-              <span style={{ color: "#6b7280" }}>{item.label}</span>
+              <span>{item.label}</span>
             </div>
           ))}
         </div>

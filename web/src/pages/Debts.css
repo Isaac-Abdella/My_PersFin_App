@@ -1,0 +1,258 @@
+/* Debts page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+/* ── Page header extras ─────────────────────── */
+.debt-detect-trigger {
+  padding: 8px 16px;
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.debt-detect-trigger:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.debt-live-note {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin: 0 0 1rem;
+  padding-left: 2px;
+}
+
+.debt-live-note-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+/* ── Detect & Import panel ──────────────────── */
+.debt-detect-panel {
+  margin-bottom: 1rem;
+  padding: 1.25rem;
+}
+
+.debt-detect-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.debt-detect-header h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.debt-detect-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-light);
+}
+
+.debt-detect-error-msg {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--danger);
+}
+
+.debt-detect-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.debt-detecting-msg {
+  text-align: center;
+  padding: 28px 0;
+  color: var(--text-light);
+  font-size: 0.82rem;
+}
+
+/* ── Detected debt cards ────────────────────── */
+.debt-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.debt-detect-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+}
+
+.debt-detect-card.imported {
+  background: var(--bg);
+  opacity: 0.65;
+}
+
+.debt-detect-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.debt-detect-card-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.debt-detect-icon { font-size: 1.4rem; }
+
+.debt-detect-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.debt-detect-desc {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-top: 1px;
+}
+
+.debt-detect-card-right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.debt-detect-amount {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.debt-imported-badge {
+  font-size: 0.72rem;
+  color: var(--success);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: #d1fae5;
+}
+
+[data-theme="dark"] .debt-imported-badge {
+  background: #052e16;
+  color: #4ade80;
+}
+
+.debt-import-btn {
+  padding: 5px 14px;
+  border-radius: 7px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+[data-theme="dark"] .debt-import-btn {
+  background: #1e3a5f;
+  color: #93c5fd;
+  border-color: #1e40af;
+}
+
+.debt-dismiss-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-light);
+  border: 1px solid var(--border);
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Editable fields within detect card ─────── */
+.debt-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.debt-field-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  display: block;
+  margin-bottom: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.debt-field-label-note {
+  font-weight: 400;
+  margin-left: 4px;
+  font-size: 0.62rem;
+}
+
+.debt-field-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.debt-detect-hint {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin: 4px 0 0;
+}
+
+.debt-detect-empty {
+  text-align: center;
+  padding: 20px 0;
+  color: var(--text-light);
+  font-size: 0.82rem;
+}
+
+/* ── Payoff planner ─────────────────────────── */
+.debt-planner-controls {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.debt-planner-grid {
+  margin-top: 1rem;
+}
+
+.debt-whatif {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+/* ── Table sub-text ─────────────────────────── */
+.debt-due-sub {
+  color: var(--text-light);
+  font-size: 0.75rem;
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
+import './Settings.css';
 
 const PROVINCES = [
   { code: "AB", name: "Alberta" },
@@ -51,17 +52,17 @@ export default function Settings() {
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: 600 }}>
+    <div className="settings-container">
       <h1>Profile &amp; Settings</h1>
-      <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
+      <p className="settings-intro">
         Your province of residence is used to calculate accurate federal + provincial
         combined marginal tax rates across all tax tools.
       </p>
 
       <form onSubmit={handleSave}>
-        <section style={{ marginBottom: "2rem" }}>
+        <section className="settings-section">
           <h3>Personal Information</h3>
-          <div className="form-group" style={{ marginBottom: "1rem" }}>
+          <div className="form-group">
             <label>First Name</label>
             <input
               type="text"
@@ -70,7 +71,7 @@ export default function Settings() {
               placeholder="First name"
             />
           </div>
-          <div className="form-group" style={{ marginBottom: "1rem" }}>
+          <div className="form-group">
             <label>Last Name</label>
             <input
               type="text"
@@ -79,15 +80,15 @@ export default function Settings() {
               placeholder="Last name"
             />
           </div>
-          <div className="form-group" style={{ marginBottom: "1rem" }}>
+          <div className="form-group">
             <label>Email</label>
             <input type="email" value={user?.email ?? ""} disabled style={{ opacity: 0.6 }} />
           </div>
         </section>
 
-        <section style={{ marginBottom: "2rem" }}>
+        <section className="settings-section">
           <h3>Tax Settings</h3>
-          <div className="form-group" style={{ marginBottom: "1rem" }}>
+          <div className="form-group">
             <label>Province / Territory of Residence</label>
             <select value={province} onChange={(e) => setProvince(e.target.value)}>
               {PROVINCES.map((p) => (
@@ -96,14 +97,14 @@ export default function Settings() {
                 </option>
               ))}
             </select>
-            <small style={{ color: "var(--text-secondary)" }}>
+            <small className="form-hint">
               Used to calculate your combined federal + provincial marginal tax rate in all tax tools.
             </small>
           </div>
         </section>
 
-        {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
-        {saved && <p style={{ color: "var(--success)" }}>Profile saved successfully.</p>}
+        {error && <p className="error-msg">{error}</p>}
+        {saved && <p className="success-msg">Profile saved successfully.</p>}
 
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? "Saving…" : "Save Profile"}

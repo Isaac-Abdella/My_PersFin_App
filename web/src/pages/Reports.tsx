@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import './Reports.css';
 
 type ReportType = "annual-spending" | "rrsp-summary" | "capital-gains" | "net-worth-trend" | "budget-performance";
 
@@ -93,45 +94,39 @@ export default function Reports() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 7 }, (_, i) => currentYear - i);
 
-  const s = { container: { maxWidth: 1000, margin: "0 auto", padding: "24px 16px" } };
-
   return (
-    <div style={s.container}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+    <div className="reports-container">
+      <div className="reports-page-header">
         <div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700 }}>Reports & Export</h1>
-          <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: 14 }}>Generate PDF reports and export your data</p>
+          <h1>Reports &amp; Export</h1>
+          <p className="reports-page-subtitle">Generate PDF reports and export your data</p>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <button
-            onClick={handlePrint}
-            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontSize: 13 }}
-          >
+        <div className="reports-export-actions">
+          <button className="reports-export-btn" onClick={handlePrint}>
             🖨️ Print / Save PDF
           </button>
           <button
+            className="reports-export-btn"
             onClick={() => downloadFile(`/api/reports/export/transactions-csv?year=${year}`, `transactions_${year}.csv`, "text/csv")}
-            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontSize: 13 }}
           >
             ⬇️ Transactions CSV
           </button>
           <button
+            className="reports-export-btn"
             onClick={() => downloadFile(`/api/reports/export/transactions-ofx?year=${year}`, `transactions_${year}.qfx`, "application/x-ofx")}
-            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontSize: 13 }}
           >
             ⬇️ QFX (Quicken)
           </button>
           <button
+            className="reports-export-btn"
             onClick={() => downloadFile(`/api/reports/export/holdings-csv`, `holdings_${year}.csv`, "text/csv")}
-            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontSize: 13 }}
           >
             ⬇️ Holdings CSV
           </button>
         </div>
       </div>
 
-      {/* Report Selector */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+      <div className="reports-selector">
         {(Object.keys(REPORT_META) as ReportType[]).map((key) => {
           const m = REPORT_META[key];
           const active = activeReport === key;
@@ -139,42 +134,28 @@ export default function Reports() {
             <button
               key={key}
               onClick={() => setActiveReport(key)}
-              style={{
-                padding: "10px 14px", borderRadius: 10, cursor: "pointer", textAlign: "left",
-                border: active ? "2px solid #2563eb" : "1px solid #d1d5db",
-                background: active ? "#eff6ff" : "white",
-                minWidth: 160, flex: "1 1 160px",
-              }}
+              className={`report-type-btn${active ? " active" : ""}`}
             >
-              <div style={{ fontSize: 18 }}>{m.icon}</div>
-              <div style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? "#2563eb" : "#111", marginTop: 4 }}>{m.label}</div>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{m.desc}</div>
+              <div className="report-type-icon">{m.icon}</div>
+              <div className="report-type-label">{m.label}</div>
+              <div className="report-type-desc">{m.desc}</div>
             </button>
           );
         })}
       </div>
 
-      {/* Controls */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, alignItems: "center" }}>
+      <div className="reports-controls">
         {activeReport !== "net-worth-trend" ? (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+          <label>
             Tax Year:
-            <select
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
-            >
+            <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </label>
         ) : (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+          <label>
             Period:
-            <select
-              value={trendMonths}
-              onChange={(e) => setTrendMonths(parseInt(e.target.value))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
-            >
+            <select value={trendMonths} onChange={(e) => setTrendMonths(parseInt(e.target.value))}>
               <option value={6}>6 months</option>
               <option value={12}>12 months</option>
               <option value={24}>24 months</option>
@@ -183,18 +164,12 @@ export default function Reports() {
             </select>
           </label>
         )}
-        <button
-          onClick={fetchReport}
-          style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #2563eb", background: "#2563eb", color: "white", cursor: "pointer", fontSize: 14 }}
-        >
-          Generate
-        </button>
+        <button className="btn btn-primary" onClick={fetchReport}>Generate</button>
       </div>
 
-      {/* Report Content */}
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 24, minHeight: 300 }}>
-        {loading && <div style={{ textAlign: "center", padding: 48, color: "#9ca3af" }}>Generating report…</div>}
-        {error && <div style={{ color: "#dc2626", padding: 16 }}>{error}</div>}
+      <div className="report-content-card">
+        {loading && <div className="report-loading">Generating report…</div>}
+        {error && <div className="report-error">{error}</div>}
         {!loading && !error && data && (
           <div ref={printRef}>
             {activeReport === "annual-spending" && <AnnualSpendingReport data={data} />}

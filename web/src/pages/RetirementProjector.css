@@ -1,0 +1,221 @@
+/* RetirementProjector page — extends StandardLayout.css */
+@import './StandardLayout.css';
+
+.retirement-projector-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.retirement-projector-container h1 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.retirement-intro {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin: 0 0 12px;
+}
+
+/* ── Two-column layout ─────────────────────── */
+.rp-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .rp-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Input panel ───────────────────────────── */
+.rp-input-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.rp-input-panel h3 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.rp-input-panel hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 8px 0;
+}
+
+.rp-input-row {
+  margin-bottom: 8px;
+}
+
+.rp-input-label {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  display: block;
+  margin-bottom: 3px;
+}
+
+.rp-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rp-input-affix {
+  font-size: 0.72rem;
+  color: var(--text-light);
+}
+
+.rp-input-group input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-family: inherit;
+  margin: 0;
+}
+
+/* ── Results column ────────────────────────── */
+.rp-results-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Summary stat cards ────────────────────── */
+.rp-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.rp-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.rp-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.rp-stat-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.rp-stat-sub {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+/* ── Section cards ─────────────────────────── */
+.rp-section-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.rp-section-card h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.rp-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rp-section-header h3 {
+  margin: 0;
+}
+
+/* ── MC stat mini-cards ────────────────────── */
+.mc-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mc-stat-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.mc-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+}
+
+.mc-stat-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.mc-stat-sub {
+  font-size: 0.65rem;
+  color: var(--text-light);
+}
+
+.mc-note {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* ── Tips list ─────────────────────────────── */
+.rp-tips-list {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  line-height: 1.8;
+  padding-left: 16px;
+  margin: 0;
+}
+
+/* ── Run simulation button ─────────────────── */
+.rp-run-btn {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rp-run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rp-mc-hint {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin: 0;
+}

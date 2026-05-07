@@ -4,6 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
 } from "recharts";
+import './MLInsights.css';
 
 const CAD = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
@@ -122,58 +123,44 @@ export default function MLInsights() {
 
   const categories = forecastResult ? Object.keys(forecastResult.forecasts) : [];
 
-  const cardStyle = {
-    background: "var(--bg-card)",
-    border: "1px solid var(--border)",
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 12,
-  };
-
-  const btnBase: React.CSSProperties = {
-    fontSize: "0.75rem", padding: "5px 16px", borderRadius: 6,
-    color: "#fff", border: "none", cursor: "pointer", fontWeight: 600,
-  };
-
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px" }}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: "1rem", fontWeight: 700, margin: 0 }}>ML Insights</h1>
-        <p style={{ color: "var(--text-light)", fontSize: "0.72rem", margin: "4px 0 0" }}>
+    <div className="ml-insights-container">
+      <div className="ml-page-header">
+        <h1>ML Insights</h1>
+        <p>
           Spending forecasts · Anomaly detection · Data-driven budget suggestions
           &nbsp;—&nbsp;powered by scikit-learn &amp; statsmodels.
         </p>
       </div>
 
       {mlError && (
-        <div style={{
-          background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8,
-          padding: "10px 14px", marginBottom: 12, fontSize: "0.78rem", color: "#dc2626",
-        }}>
-          ⚠ {mlError}
-        </div>
+        <div className="ml-error-notice">⚠ {mlError}</div>
       )}
 
       {/* ── Section 1: Spending Forecast ─────────────────────────────────── */}
-      <div style={cardStyle}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+      <div className="ml-section-card">
+        <div className="ml-section-header">
           <div>
-            <h2 style={{ fontSize: "0.88rem", fontWeight: 700, margin: 0 }}>Spending Forecast</h2>
-            <p style={{ fontSize: "0.7rem", color: "var(--text-light)", margin: "2px 0 0" }}>
+            <h2>Spending Forecast</h2>
+            <p className="ml-section-desc">
               Holt exponential smoothing on 12 months of expense history
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="ml-section-controls">
             <select
+              className="ml-select"
               value={forecastMonths}
               onChange={e => setForecastMonths(Number(e.target.value))}
-              style={{ fontSize: "0.75rem", padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-card)", color: "var(--text)" }}
             >
               <option value={1}>1 month ahead</option>
               <option value={3}>3 months ahead</option>
               <option value={6}>6 months ahead</option>
             </select>
-            <button onClick={runForecast} disabled={forecastLoading} style={{ ...btnBase, background: "#4f46e5", opacity: forecastLoading ? 0.7 : 1 }}>
+            <button
+              className="ml-run-btn forecast"
+              onClick={runForecast}
+              disabled={forecastLoading}
+            >
               {forecastLoading ? "Forecasting…" : "Run Forecast"}
             </button>
           </div>
@@ -181,21 +168,18 @@ export default function MLInsights() {
 
         {forecastResult && categories.length > 0 && (
           <>
-            {/* Category pills */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            <div className="ml-cat-pills">
               {categories.map(cat => {
                 const d = forecastResult.forecasts[cat];
                 const trendColor = d.trend === "up" ? "#dc2626" : d.trend === "down" ? "#059669" : "#d97706";
                 const icon = d.trend === "up" ? "↑" : d.trend === "down" ? "↓" : "→";
                 const active = forecastCat === cat;
                 return (
-                  <button key={cat} onClick={() => setForecastCat(cat)} style={{
-                    fontSize: "0.7rem", padding: "3px 10px", borderRadius: 999, cursor: "pointer",
-                    background: active ? "#4f46e5" : "var(--bg)",
-                    color: active ? "#fff" : "var(--text)",
-                    border: `1px solid ${active ? "transparent" : "var(--border)"}`,
-                    fontWeight: active ? 600 : 400,
-                  }}>
+                  <button
+                    key={cat}
+                    className={`ml-cat-pill ${active ? "active" : "inactive"}`}
+                    onClick={() => setForecastCat(cat)}
+                  >
                     {cat}&nbsp;<span style={{ color: active ? "#fff" : trendColor }}>{icon}</span>
                   </button>
                 );
@@ -220,7 +204,7 @@ export default function MLInsights() {
                     <Line type="monotone" dataKey="forecast" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" dot={{ r: 3 }} name="Forecast" connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
-                <div style={{ marginTop: 6, fontSize: "0.7rem", color: "var(--text-light)" }}>
+                <div className="ml-chart-note">
                   Dashed = forecasted months.&nbsp;
                   Trend:&nbsp;
                   <strong style={{ color: forecastResult.forecasts[forecastCat].trend === "up" ? "#dc2626" : forecastResult.forecasts[forecastCat].trend === "down" ? "#059669" : "#d97706" }}>
@@ -233,127 +217,125 @@ export default function MLInsights() {
         )}
 
         {forecastResult && categories.length === 0 && (
-          <p style={{ fontSize: "0.75rem", color: "var(--text-light)", margin: 0 }}>
+          <p className="ml-empty-text">
             No categories with sufficient history for forecasting (need ≥ 2 months per category).
           </p>
         )}
       </div>
 
       {/* ── Section 2: Anomaly Detection ─────────────────────────────────── */}
-      <div style={cardStyle}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+      <div className="ml-section-card">
+        <div className="ml-section-header">
           <div>
-            <h2 style={{ fontSize: "0.88rem", fontWeight: 700, margin: 0 }}>Anomaly Detection</h2>
-            <p style={{ fontSize: "0.7rem", color: "var(--text-light)", margin: "2px 0 0" }}>
+            <h2>Anomaly Detection</h2>
+            <p className="ml-section-desc">
               Isolation Forest on last 3 months of transactions — flags unusual amounts &amp; patterns
             </p>
           </div>
-          <button onClick={runAnomalies} disabled={anomalyLoading} style={{ ...btnBase, background: "#dc2626", opacity: anomalyLoading ? 0.7 : 1 }}>
+          <button
+            className="ml-run-btn anomaly"
+            onClick={runAnomalies}
+            disabled={anomalyLoading}
+          >
             {anomalyLoading ? "Scanning…" : "Scan Transactions"}
           </button>
         </div>
 
         {anomalyResult && (
           <>
-            <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+            <div className="ml-stats-row">
               {[
                 { label: "Scanned", value: anomalyResult.totalScanned, color: "var(--text)" },
-                { label: "Flagged", value: anomalyResult.anomalyCount, color: anomalyResult.anomalyCount > 0 ? "#dc2626" : "#059669" },
+                { label: "Flagged", value: anomalyResult.anomalyCount, color: anomalyResult.anomalyCount > 0 ? "var(--danger)" : "var(--success)" },
                 { label: "Flag Rate", value: `${anomalyResult.totalScanned > 0 ? ((anomalyResult.anomalyCount / anomalyResult.totalScanned) * 100).toFixed(1) : 0}%`, color: "var(--text)" },
               ].map(c => (
-                <div key={c.label} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 14px" }}>
-                  <div style={{ fontSize: "0.65rem", color: "var(--text-light)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{c.label}</div>
-                  <div style={{ fontSize: "1.05rem", fontWeight: 700, color: c.color }}>{c.value}</div>
+                <div key={c.label} className="ml-stat-mini">
+                  <div className="ml-stat-mini-label">{c.label}</div>
+                  <div className="ml-stat-mini-value" style={{ color: c.color }}>{c.value}</div>
                 </div>
               ))}
             </div>
 
             {anomalyResult.anomalies.length > 0 ? (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
+              <div className="ml-table-wrap">
+                <table className="ml-table">
                   <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    <tr>
                       {["Date", "Category", "Amount", "Description", "Score", "Why Flagged"].map(h => (
-                        <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-light)", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {anomalyResult.anomalies.map(txn => (
-                      <tr key={txn.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{txn.date}</td>
-                        <td style={{ padding: "6px 8px" }}>{txn.category}</td>
-                        <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: "#dc2626", fontWeight: 600 }}>{CAD(txn.amount)}</td>
-                        <td style={{ padding: "6px 8px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {txn.description || "—"}
-                        </td>
-                        <td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>
-                          <span style={{
-                            background: txn.anomalyScore >= 70 ? "#fef2f2" : "#fefce8",
-                            color: txn.anomalyScore >= 70 ? "#dc2626" : "#854d0e",
-                            borderRadius: 4, padding: "2px 6px", fontWeight: 600, fontSize: "0.7rem",
-                          }}>
+                      <tr key={txn.id}>
+                        <td className="td-nowrap">{txn.date}</td>
+                        <td>{txn.category}</td>
+                        <td className="td-amount">{CAD(txn.amount)}</td>
+                        <td className="td-desc">{txn.description || "—"}</td>
+                        <td className="td-nowrap">
+                          <span className={`ml-anomaly-score ${txn.anomalyScore >= 70 ? "high" : "medium"}`}>
                             {txn.anomalyScore.toFixed(0)}
                           </span>
                         </td>
-                        <td style={{ padding: "6px 8px", color: "var(--text-light)", fontSize: "0.7rem" }}>{txn.reason}</td>
+                        <td className="td-reason">{txn.reason}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <p style={{ fontSize: "0.75rem", color: "#059669", margin: 0 }}>
-                ✓ No anomalous transactions detected.
-              </p>
+              <p className="ml-no-anomaly">✓ No anomalous transactions detected.</p>
             )}
             {anomalyResult.message && (
-              <p style={{ fontSize: "0.72rem", color: "var(--text-light)", marginTop: 6, marginBottom: 0 }}>
-                {anomalyResult.message}
-              </p>
+              <p className="ml-anomaly-message">{anomalyResult.message}</p>
             )}
           </>
         )}
       </div>
 
       {/* ── Section 3: Budget Suggestions ────────────────────────────────── */}
-      <div style={cardStyle}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+      <div className="ml-section-card">
+        <div className="ml-section-header">
           <div>
-            <h2 style={{ fontSize: "0.88rem", fontWeight: 700, margin: 0 }}>Smart Budget Suggestions</h2>
-            <p style={{ fontSize: "0.7rem", color: "var(--text-light)", margin: "2px 0 0" }}>
+            <h2>Smart Budget Suggestions</h2>
+            <p className="ml-section-desc">
               75th-percentile + trend analysis on 6 months of spending history
             </p>
           </div>
-          <button onClick={runBudget} disabled={budgetLoading} style={{ ...btnBase, background: "#059669", opacity: budgetLoading ? 0.7 : 1 }}>
+          <button
+            className="ml-run-btn budget"
+            onClick={runBudget}
+            disabled={budgetLoading}
+          >
             {budgetLoading ? "Analyzing…" : "Generate Suggestions"}
           </button>
         </div>
 
         {budgetResult && (
           <>
-            <p style={{ fontSize: "0.7rem", color: "var(--text-light)", margin: "0 0 10px" }}>
+            <p className="ml-budget-note">
               {budgetResult.monthsAnalyzed} months analyzed.
               Suggested = P75 × 1.05× buffer (1.10× for rising categories).
             </p>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
+            <div className="ml-table-wrap">
+              <table className="ml-table">
                 <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr>
                     {["Category", "Avg Spend", "Median", "P75", "Suggested Budget", "Trend", "Confidence", "Months"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-light)", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {budgetResult.suggestions.map(s => (
-                    <tr key={s.category} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "6px 8px", fontWeight: 600 }}>{s.category}</td>
-                      <td style={{ padding: "6px 8px" }}>{CAD(s.historicalMean)}</td>
-                      <td style={{ padding: "6px 8px" }}>{CAD(s.historicalMedian)}</td>
-                      <td style={{ padding: "6px 8px" }}>{CAD(s.p75)}</td>
-                      <td style={{ padding: "6px 8px", fontWeight: 700, color: "#4f46e5" }}>{CAD(s.suggestedBudget)}</td>
-                      <td style={{ padding: "6px 8px" }}>
+                    <tr key={s.category}>
+                      <td className="td-bold">{s.category}</td>
+                      <td>{CAD(s.historicalMean)}</td>
+                      <td>{CAD(s.historicalMedian)}</td>
+                      <td>{CAD(s.p75)}</td>
+                      <td className="ml-budget-suggested">{CAD(s.suggestedBudget)}</td>
+                      <td>
                         <span style={{
                           color: s.trend === "increasing" ? "#dc2626" : s.trend === "decreasing" ? "#059669" : "#d97706",
                           fontWeight: 600,
@@ -361,16 +343,10 @@ export default function MLInsights() {
                           {s.trend === "increasing" ? "↑" : s.trend === "decreasing" ? "↓" : "→"} {s.trend}
                         </span>
                       </td>
-                      <td style={{ padding: "6px 8px" }}>
-                        <span style={{
-                          background: s.confidence === "high" ? "#f0fdf4" : s.confidence === "medium" ? "#fefce8" : "#fef2f2",
-                          color: s.confidence === "high" ? "#059669" : s.confidence === "medium" ? "#854d0e" : "#dc2626",
-                          borderRadius: 4, padding: "2px 6px", fontSize: "0.68rem", fontWeight: 600,
-                        }}>
-                          {s.confidence}
-                        </span>
+                      <td>
+                        <span className={`ml-badge ${s.confidence}`}>{s.confidence}</span>
                       </td>
-                      <td style={{ padding: "6px 8px", color: "var(--text-light)" }}>{s.monthsAnalyzed}</td>
+                      <td className="td-muted">{s.monthsAnalyzed}</td>
                     </tr>
                   ))}
                 </tbody>

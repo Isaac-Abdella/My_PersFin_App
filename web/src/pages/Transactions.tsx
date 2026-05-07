@@ -5,6 +5,7 @@ import { api } from "../api";
 import type { Transaction, Account, CategoryMajor } from "../types";
 import { CATEGORY_CATALOG } from "../data/categoryCatalog";
 import { TrendAreaChart } from "../components/charts";
+import './Transactions.css';
 
 const ITEMS_PER_PAGE = 100;
 const ALL_ACCOUNTS = "__all_accounts__";
