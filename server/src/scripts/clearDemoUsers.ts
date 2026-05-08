@@ -26,7 +26,7 @@ async function main() {
   for (const email of DEMO_EMAILS) {
     const user = await User.findOne({ email });
     if (!user) { console.log(`  ⏭  ${email} not found`); continue; }
-    const uid = user._id;
+    const uid = user._id as any;
     const [txns, accts, budgets, bills, goals, snapshots] = await Promise.all([
       Transaction.deleteMany({ userId: uid }),
       Account.deleteMany({ userId: uid }),
