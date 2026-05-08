@@ -56,6 +56,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  // Render injects RENDER_EXTERNAL_URL automatically — allows the app's own origin
+  ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
 ];
 
 app.use(cors({
