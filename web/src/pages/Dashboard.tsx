@@ -585,7 +585,7 @@ export default function Dashboard() {
         <div className="card" style={{ marginBottom: "1rem" }}>
           <h3 style={{ marginTop: 0 }}>12-Month Cash Flow</h3>
           <TrendAreaChart
-            data={cashFlow as Record<string, unknown>[]}
+            data={cashFlow as unknown as Record<string, unknown>[]}
             xKey="month"
             series={[
               { key: "income",   label: "Income",   color: C.income  },
@@ -622,7 +622,7 @@ export default function Dashboard() {
         <div className="card" style={{ marginBottom: "1rem" }}>
           <h3 style={{ marginTop: 0 }}>Budget vs Actual</h3>
           <ComparisonBarChart
-            data={budgetComparison as Record<string, unknown>[]}
+            data={budgetComparison as unknown as Record<string, unknown>[]}
             xKey="category"
             bars={[
               { key: "budgeted", label: "Budget", color: C.net     },
