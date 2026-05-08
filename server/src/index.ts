@@ -35,6 +35,7 @@ import recurringRoutes from "./routes/recurring";
 import plaidRoutes from "./routes/plaid";
 import mlRoutes from "./routes/ml";
 import demoRoutes from "./routes/demo";
+import setupRoutes from "./routes/setup";
 import { startScheduler } from "./jobs/scheduler";
 
 const app = express();
@@ -139,6 +140,7 @@ app.use("/api/recurring", recurringRoutes);
 app.use("/api/plaid", plaidRoutes);
 app.use("/api/ml", mlRoutes);
 app.use("/api/demo", demoRoutes);
+app.use("/api/setup", setupRoutes);
 
 // ── 6. SPA fallback — must come before error handler ─────────────────────────
 if (isProd) {
