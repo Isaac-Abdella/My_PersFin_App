@@ -41,10 +41,17 @@ const app = express();
 
 const isProd = process.env.NODE_ENV === "production";
 
-// Render (and most PaaS) terminate TLS at the load balancer and forward via HTTP.
-// trust proxy lets Express see req.secure = true and set secure cookies correctly.
+// Render terminates TLS at the load balancer — trust proxy so cookies are secure
 if (isProd) app.set("trust proxy", 1);
 
+// ── 1. Static files served FIRST — no session/auth needed for assets ──────────
+// __dirname at runtime = server/dist, so ../../web/dist = repo-root/web/dist
+const frontendDist = path.join(__dirname, "../../web/dist");
+if (isProd) {
+  app.use(express.static(frontendDist));
+}
+
+// ── 2. CORS ───────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
@@ -53,7 +60,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow server-to-server / Render health checks (no origin) and listed origins
+    // Allow server-to-server / Render health checks (no Origin) and listed origins
     if (!origin || allowedOrigins.includes(origin)) cb(null, true);
     else cb(new Error(`CORS: ${origin} not allowed`));
   },
@@ -63,20 +70,21 @@ app.use(cors({
   optionsSuccessStatus: 200,
 }));
 
-// Request logging middleware
+// ── 3. Request logging ────────────────────────────────────────────────────────
 app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: "50mb" }));
 
-const SESSION_TTL_SEC = 7 * 24 * 60 * 60; // 7 days, matches cookie maxAge
+// ── 4. Session + Passport (API routes only need these) ───────────────────────
+const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
 
 const store = new MongoStore({
   mongoUrl: MONGO_URI,
   ttl: SESSION_TTL_SEC,
-  touchAfter: 24 * 3600 // only update the TTL once per day unless data changes
+  touchAfter: 24 * 3600,
 });
 
 store.on("error", (err) => {
@@ -88,19 +96,20 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: store,
+    store,
     cookie: {
-      secure: isProd,      // HTTPS only in production (Render terminates TLS)
+      secure: isProd,
       httpOnly: true,
-      sameSite: 'lax',
-      maxAge: SESSION_TTL_SEC * 1000
-    }
+      sameSite: "lax",
+      maxAge: SESSION_TTL_SEC * 1000,
+    },
   })
 );
 
 app.use(passport.initialize());
 app.use(passport.session());
 
+// ── 5. API routes ─────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/account-types", accountTypesRoutes);
@@ -129,25 +138,21 @@ app.use("/api/plaid", plaidRoutes);
 app.use("/api/ml", mlRoutes);
 app.use("/api/demo", demoRoutes);
 
-// Error handler
+// ── 6. SPA fallback — must come before error handler ─────────────────────────
+if (isProd) {
+  app.get("/{*splat}", (_req, res) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
+
+// ── 7. Error handler — must be last ──────────────────────────────────────────
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error("Error:", err);
   res.status(err.status || 500).json({ message: err.message });
 });
-
-// In production, serve the built React app from web/dist.
-// __dirname is server/dist at runtime, so ../../web/dist resolves to the repo root's web/dist.
-if (isProd) {
-  const frontendDist = path.join(__dirname, "../../web/dist");
-  app.use(express.static(frontendDist));
-  // SPA fallback — all non-API routes return index.html
-  app.get("/{*splat}", (_req, res) => res.sendFile(path.join(frontendDist, "index.html")));
-}
 
 mongoose.connect(MONGO_URI).then(() => {
   console.log("Mongo connected");
   app.listen(PORT, () => console.log(`API on http://localhost:${PORT}`));
   startScheduler();
 });
-
-
