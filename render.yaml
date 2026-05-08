@@ -5,7 +5,7 @@ services:
   - type: web
     name: persfin-app
     runtime: node
-    buildCommand: "cd web && npm ci && npm run build && cd ../server && npm ci && npm run build"
+    buildCommand: "cd web && npm ci --include=dev && npm run build && cd ../server && npm ci --include=dev && npm run build"
     startCommand: "node server/dist/index.js"
     plan: free
     envVars:
