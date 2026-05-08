@@ -1,0 +1,40 @@
+services:
+  # ── Main app: Express backend + built React frontend ─────────────────────────
+  # The React app is built into web/dist and served as static files by Express.
+  # This keeps everything on one URL so session cookies and /api calls just work.
+  - type: web
+    name: persfin-app
+    runtime: node
+    buildCommand: "cd web && npm ci && npm run build && cd ../server && npm ci && npm run build"
+    startCommand: "node server/dist/index.js"
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false          # paste your MongoDB Atlas URI in the Render dashboard
+      - key: SESSION_SECRET
+        generateValue: true  # Render generates a random secret automatically
+      - key: ML_SERVICE_URL
+        sync: false          # set to your persfin-ml Render URL after it deploys
+      # Optional — email (password reset)
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      # Optional — Plaid (bank connections)
+      - key: PLAID_CLIENT_ID
+        sync: false
+      - key: PLAID_SECRET
+        sync: false
+      - key: PLAID_ENV
+        value: sandbox
+
+  # ── Python ML service ─────────────────────────────────────────────────────────
+  - type: web
+    name: persfin-ml
+    runtime: python
+    rootDir: python-ml
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    plan: free

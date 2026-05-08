@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:demo": "ts-node src/scripts/seedDemoUsers.ts",
-    "clear:demo": "ts-node src/scripts/clearDemoUsers.ts"
+    "clear:demo": "ts-node src/scripts/clearDemoUsers.ts",
+    "build:prod": "cd ../web && npm ci && npm run build && cd ../server && npm ci && npm run build"
   },
   "keywords": [],
   "author": "",

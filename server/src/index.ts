@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import session from "express-session";
+import path from "path";
 import MongoStore from "connect-mongo";
 import passport from "passport";
 import mongoose from "mongoose";
@@ -38,12 +39,28 @@ import { startScheduler } from "./jobs/scheduler";
 
 const app = express();
 
+const isProd = process.env.NODE_ENV === "production";
+
+// Render (and most PaaS) terminate TLS at the load balancer and forward via HTTP.
+// trust proxy lets Express see req.secure = true and set secure cookies correctly.
+if (isProd) app.set("trust proxy", 1);
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+];
+
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: (origin, cb) => {
+    // Allow server-to-server / Render health checks (no origin) and listed origins
+    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
+    else cb(new Error(`CORS: ${origin} not allowed`));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 }));
 
 // Request logging middleware
@@ -73,7 +90,7 @@ app.use(
     saveUninitialized: false,
     store: store,
     cookie: {
-      secure: false,       // set true + trust proxy in production with HTTPS
+      secure: isProd,      // HTTPS only in production (Render terminates TLS)
       httpOnly: true,
       sameSite: 'lax',
       maxAge: SESSION_TTL_SEC * 1000
@@ -117,6 +134,15 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   console.error("Error:", err);
   res.status(err.status || 500).json({ message: err.message });
 });
+
+// In production, serve the built React app from web/dist.
+// __dirname is server/dist at runtime, so ../../web/dist resolves to the repo root's web/dist.
+if (isProd) {
+  const frontendDist = path.join(__dirname, "../../web/dist");
+  app.use(express.static(frontendDist));
+  // SPA fallback — all non-API routes return index.html
+  app.get("*", (_req, res) => res.sendFile(path.join(frontendDist, "index.html")));
+}
 
 mongoose.connect(MONGO_URI).then(() => {
   console.log("Mongo connected");
