@@ -141,7 +141,7 @@ if (isProd) {
   const frontendDist = path.join(__dirname, "../../web/dist");
   app.use(express.static(frontendDist));
   // SPA fallback — all non-API routes return index.html
-  app.get("*", (_req, res) => res.sendFile(path.join(frontendDist, "index.html")));
+  app.get("/{*splat}", (_req, res) => res.sendFile(path.join(frontendDist, "index.html")));
 }
 
 mongoose.connect(MONGO_URI).then(() => {
