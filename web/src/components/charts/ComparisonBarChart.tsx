@@ -11,7 +11,7 @@ export interface BarSeries {
 }
 
 interface Props {
-  data:         Record<string, string | number>[];
+  data:         Record<string, unknown>[];
   bars:         BarSeries[];
   height?:      number;
   layout?:      "vertical" | "horizontal";
