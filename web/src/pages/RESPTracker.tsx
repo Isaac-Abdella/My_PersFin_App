@@ -59,7 +59,7 @@ function suggestedCesg(amount: number, alreadyReceivedLifetime: number): number 
   return Math.round(Math.min(eligible * 0.2, MAX_CESG_PER_YEAR, Math.max(0, MAX_CESG_LIFETIME - alreadyReceivedLifetime)) * 100) / 100;
 }
 
-const BLANK_PLAN = { planType: "individual" as const, institution: "", accountName: "", currentBalance: "", notes: "" };
+const BLANK_PLAN = { planType: "individual" as "individual" | "family", institution: "", accountName: "", currentBalance: "", notes: "" };
 const BLANK_CONTRIB = { year: new Date().getFullYear(), beneficiaryName: "", amount: "", cesgReceived: "", date: new Date().toISOString().split("T")[0], note: "" };
 
 const RULES = [
