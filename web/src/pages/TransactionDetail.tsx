@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { fmtMoney } from "../components/charts";
 import type { Transaction, Account, CategoryMajor } from "../types";
 import { CATEGORY_CATALOG } from "../data/categoryCatalog";
 import './TransactionDetail.css';
@@ -95,7 +96,7 @@ export default function TransactionDetail() {
       <div className="card">
         <div className="transaction-info">
           <p><strong>Account:</strong> {account?.name}</p>
-          <p><strong>Original Amount:</strong> ${transaction.amount.toFixed(2)}</p>
+          <p><strong>Original Amount:</strong> {fmtMoney(transaction.amount)}</p>
           <p><strong>Created:</strong> {format(new Date(transaction.date), "PPP")}</p>
         </div>
 

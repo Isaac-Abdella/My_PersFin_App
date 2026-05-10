@@ -2,7 +2,7 @@
 import { api } from "../api";
 import type { Budget, CategoryMajor } from "../types";
 import { CATEGORY_CATALOG } from "../data/categoryCatalog";
-import { DonutChart } from "../components/charts";
+import { DonutChart, fmtMoney } from "../components/charts";
 import './Budgets.css';
 
 type BudgetCycle = "biweekly" | "monthly";
@@ -81,8 +81,8 @@ function signedMajorFlowAmount(majorKey: string | undefined, value: number): num
 }
 
 function formatSignedMoney(value: number): string {
-  const sign = value < 0 ? "-" : "+";
-  return `${sign}$${Math.abs(value).toFixed(2)}`;
+  const sign = value < 0 ? "−" : "+";
+  return `${sign}${fmtMoney(Math.abs(value))}`;
 }
 
 export default function Budgets() {
@@ -157,6 +157,8 @@ export default function Budgets() {
   useEffect(() => {
     setFormData((prev) => ({ ...prev, period: cycle }));
     setMajorPlan((prev) => ({ ...prev, period: cycle }));
+    setShowMajorPlanner(false);
+    setMajorAllocations([]);
   }, [cycle]);
 
   useEffect(() => {
@@ -294,7 +296,7 @@ export default function Budgets() {
     const allocationTotal = allocations.reduce((sum, a) => sum + a.amount, 0);
     if (Math.abs(allocationTotal - total) > 0.01) {
       alert(
-        `Allocated $${allocationTotal.toFixed(2)} (converted to ${majorPlan.period}) but total is $${total.toFixed(2)}.`
+        `Allocated ${fmtMoney(allocationTotal)} (converted to ${majorPlan.period}) but total is ${fmtMoney(total)}.`
       );
       return;
     }
@@ -562,10 +564,10 @@ export default function Budgets() {
                 </div>
                 <div style={{ marginTop: "0.5rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
                   <span>
-                    Allocated: <strong>${majorPlanAllocationTotal.toFixed(2)}</strong>
+                    Allocated: <strong>{fmtMoney(majorPlanAllocationTotal)}</strong>
                   </span>
                   <span>
-                    Remaining: <strong className={majorPlanRemaining < 0 ? "negative" : "positive"}>${majorPlanRemaining.toFixed(2)}</strong>
+                    Remaining: <strong className={majorPlanRemaining < 0 ? "negative" : "positive"}>{fmtMoney(majorPlanRemaining)}</strong>
                   </span>
                 </div>
               </div>
@@ -760,8 +762,8 @@ export default function Budgets() {
                   </div>
                 </div>
                 <div style={{ marginTop: "0.35rem", color: "var(--text-light)" }}>
-                  Spent ${item.currentSpent.toFixed(2)} / Effective ${item.effectiveBudget.toFixed(2)}
-                  {item.rolloverAmount !== 0 && ` (Rollover ${item.rolloverAmount >= 0 ? "+" : ""}${item.rolloverAmount.toFixed(2)})`}
+                  Spent {fmtMoney(item.currentSpent)} / Effective {fmtMoney(item.effectiveBudget)}
+                  {item.rolloverAmount !== 0 && ` (Rollover ${item.rolloverAmount >= 0 ? "+" : ""}${fmtMoney(Math.abs(item.rolloverAmount))})`}
                 </div>
                 <div
                   style={{
@@ -781,7 +783,7 @@ export default function Budgets() {
                   />
                 </div>
                 <div style={{ marginTop: "0.35rem", fontSize: "0.9rem" }}>
-                  Remaining: <strong className={item.remaining < 0 ? "negative" : "positive"}>${item.remaining.toFixed(2)}</strong>
+                  Remaining: <strong className={item.remaining < 0 ? "negative" : "positive"}>{fmtMoney(item.remaining)}</strong>
                 </div>
               </div>
             ))}
@@ -811,9 +813,9 @@ export default function Budgets() {
                 <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
                   {[
                     { label: "Period Elapsed", value: `${(elapsed * 100).toFixed(0)}%`, sub: `${daysLeft} days left`, color: "#3B82F6" },
-                    { label: "Budget Used", value: `${(spentRatio * 100).toFixed(0)}%`, sub: `$${totalSpent.toFixed(0)} of $${totalBudget.toFixed(0)}`, color: paceOk ? "#059669" : "#dc2626" },
+                    { label: "Budget Used", value: `${(spentRatio * 100).toFixed(0)}%`, sub: `${fmtMoney(totalSpent)} of ${fmtMoney(totalBudget)}`, color: paceOk ? "#059669" : "#dc2626" },
                     { label: "Spend Pace", value: `${(paceRatio * 100).toFixed(0)}%`, sub: paceOk ? "On track" : "Running over", color: paceOk ? "#059669" : "#dc2626" },
-                    { label: "Projected End-of-Period", value: `$${projectedEnd.toFixed(0)}`, sub: overUnder > 0 ? `$${overUnder.toFixed(0)} over budget` : `$${Math.abs(overUnder).toFixed(0)} under budget`, color: overUnder > 0 ? "#dc2626" : "#059669" },
+                    { label: "Projected End-of-Period", value: fmtMoney(projectedEnd), sub: overUnder > 0 ? `${fmtMoney(overUnder)} over budget` : `${fmtMoney(Math.abs(overUnder))} under budget`, color: overUnder > 0 ? "#dc2626" : "#059669" },
                   ].map(c => (
                     <div key={c.label} style={{ flex: 1, minWidth: 140, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.6rem 0.9rem" }}>
                       <div style={{ fontSize: "0.7rem", color: "var(--text-light)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{c.label}</div>
@@ -860,13 +862,13 @@ export default function Budgets() {
           <div style={{ marginTop: "1rem" }}>
             <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
               <span>
-                Savings: <strong>${paydayPlan.savingsAmount.toFixed(2)}</strong>
+                Savings: <strong>{fmtMoney(paydayPlan.savingsAmount)}</strong>
               </span>
               <span>
-                Debt: <strong>${paydayPlan.debtAmount.toFixed(2)}</strong>
+                Debt: <strong>{fmtMoney(paydayPlan.debtAmount)}</strong>
               </span>
               <span>
-                Envelopes: <strong>${paydayPlan.envelopesAmount.toFixed(2)}</strong>
+                Envelopes: <strong>{fmtMoney(paydayPlan.envelopesAmount)}</strong>
               </span>
             </div>
             <table>
@@ -882,7 +884,7 @@ export default function Budgets() {
                   <tr key={a.category}>
                     <td>{a.category}</td>
                     <td>{a.kind}</td>
-                    <td>${a.suggested.toFixed(2)}</td>
+                    <td>{fmtMoney(a.suggested)}</td>
                   </tr>
                 ))}
               </tbody>

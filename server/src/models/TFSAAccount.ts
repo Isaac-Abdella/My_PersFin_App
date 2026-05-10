@@ -3,8 +3,10 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface ITFSAAccount extends Document {
   userId: mongoose.Types.ObjectId;
   accountName: string;
+  institution: string;
   balance: number;
   currency: string;
+  notes?: string;
   contributions: Array<{
     year: number;
     amount: number;
@@ -32,8 +34,10 @@ const tfsaAccountSchema = new Schema<ITFSAAccount>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     accountName: { type: String, required: true },
+    institution: { type: String, default: "" },
     balance: { type: Number, default: 0 },
     currency: { type: String, default: "CAD" },
+    notes: { type: String, default: "" },
     contributions: [
       {
         year: Number,

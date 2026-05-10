@@ -1,0 +1,223 @@
+import { Router, Request, Response } from "express";
+import { TFSAAccount } from "../models/TFSAAccount";
+import { requireAuth } from "../middleware/requireLogin";
+
+const router = Router();
+router.use(requireAuth);
+
+// CRA TFSA annual limits since program inception
+const ANNUAL_LIMITS: Record<number, number> = {
+  2009: 5000, 2010: 5000, 2011: 5000, 2012: 5000,
+  2013: 5500, 2014: 5500, 2015: 10000,
+  2016: 5500, 2017: 5500, 2018: 5500,
+  2019: 6000, 2020: 6000, 2021: 6000, 2022: 6000,
+  2023: 6500, 2024: 7000, 2025: 7000,
+};
+const DEFAULT_LIMIT = 7000;
+
+function currentYearLimit(year: number) {
+  return ANNUAL_LIMITS[year] ?? DEFAULT_LIMIT;
+}
+
+function computeSummary(accounts: any[]) {
+  const currentYear = new Date().getFullYear();
+
+  const contribByYear: Record<number, number> = {};
+  const withdrawByYear: Record<number, number> = {};
+  let totalBalance = 0;
+
+  for (const acct of accounts) {
+    totalBalance += acct.balance ?? 0;
+    for (const c of acct.contributions) {
+      contribByYear[c.year] = (contribByYear[c.year] || 0) + c.amount;
+    }
+    for (const w of acct.withdrawals) {
+      withdrawByYear[w.year] = (withdrawByYear[w.year] || 0) + w.amount;
+    }
+  }
+
+  const thisYearLimit       = currentYearLimit(currentYear);
+  // Withdrawals made before this year add back to this year's room
+  const priorYearWithdrawals = Object.entries(withdrawByYear)
+    .filter(([yr]) => Number(yr) < currentYear)
+    .reduce((s, [, amt]) => s + amt, 0);
+
+  const thisYearAvailable  = thisYearLimit + priorYearWithdrawals;
+  const thisYearContributed = contribByYear[currentYear] || 0;
+  const thisYearRemaining  = Math.max(0, thisYearAvailable - thisYearContributed);
+
+  const totalContributed = Object.values(contribByYear).reduce((s, v) => s + v, 0);
+  const totalWithdrawn   = Object.values(withdrawByYear).reduce((s, v) => s + v, 0);
+
+  return {
+    totalBalance:        Math.round(totalBalance * 100) / 100,
+    totalContributed:    Math.round(totalContributed * 100) / 100,
+    totalWithdrawn:      Math.round(totalWithdrawn * 100) / 100,
+    thisYearLimit,
+    priorYearWithdrawals: Math.round(priorYearWithdrawals * 100) / 100,
+    thisYearAvailable:   Math.round(thisYearAvailable * 100) / 100,
+    thisYearContributed: Math.round(thisYearContributed * 100) / 100,
+    thisYearRemaining:   Math.round(thisYearRemaining * 100) / 100,
+    currentYear,
+  };
+}
+
+// GET /api/tfsa
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const accounts = await TFSAAccount.find({ userId }).sort({ createdAt: 1 });
+    return res.json(accounts);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/tfsa/summary
+router.get("/summary", async (req: Request, res: Response) => {
+  try {
+    const userId   = (req.user as any).id;
+    const accounts = await TFSAAccount.find({ userId });
+    return res.json({ totalAccounts: accounts.length, ...computeSummary(accounts) });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// POST /api/tfsa
+router.post("/", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const { accountName, institution, balance, notes } = req.body;
+    if (!accountName) return res.status(400).json({ message: "accountName is required" });
+
+    const account = await TFSAAccount.create({
+      userId,
+      accountName,
+      institution: institution || "",
+      balance: Number(balance) || 0,
+      contributions: [],
+      withdrawals: [],
+      notes,
+    });
+    return res.status(201).json(account);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// PUT /api/tfsa/:id
+router.put("/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const { accountName, institution, balance, notes } = req.body;
+    const account = await TFSAAccount.findOneAndUpdate(
+      { _id: req.params.id, userId },
+      { accountName, institution, balance: Number(balance), notes },
+      { new: true }
+    );
+    if (!account) return res.status(404).json({ message: "Not found" });
+    return res.json(account);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// DELETE /api/tfsa/:id
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const account = await TFSAAccount.findOneAndDelete({ _id: req.params.id, userId });
+    if (!account) return res.status(404).json({ message: "Not found" });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// POST /api/tfsa/:id/contributions
+router.post("/:id/contributions", async (req: Request, res: Response) => {
+  try {
+    const userId  = (req.user as any).id;
+    const account = await TFSAAccount.findOne({ _id: req.params.id, userId });
+    if (!account) return res.status(404).json({ message: "Not found" });
+
+    const { year, amount, date, note } = req.body;
+    if (!year || !amount || !date) return res.status(400).json({ message: "year, amount, date required" });
+
+    account.contributions.push({ year: Number(year), amount: Number(amount), date: new Date(date) });
+    account.balance += Number(amount);
+    await account.save();
+    return res.json(account);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// DELETE /api/tfsa/:id/contributions/:cid
+router.delete("/:id/contributions/:cid", async (req: Request, res: Response) => {
+  try {
+    const userId  = (req.user as any).id;
+    const account = await TFSAAccount.findOne({ _id: req.params.id, userId });
+    if (!account) return res.status(404).json({ message: "Not found" });
+
+    const contrib = account.contributions.find(c => (c as any)._id?.toString() === req.params.cid);
+    if (contrib) account.balance = Math.max(0, account.balance - contrib.amount);
+    account.contributions = account.contributions.filter(
+      c => (c as any)._id?.toString() !== req.params.cid
+    );
+    await account.save();
+    return res.json(account);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// POST /api/tfsa/:id/withdrawals
+router.post("/:id/withdrawals", async (req: Request, res: Response) => {
+  try {
+    const userId  = (req.user as any).id;
+    const account = await TFSAAccount.findOne({ _id: req.params.id, userId });
+    if (!account) return res.status(404).json({ message: "Not found" });
+
+    const { year, amount, date } = req.body;
+    if (!year || !amount || !date) return res.status(400).json({ message: "year, amount, date required" });
+
+    account.withdrawals.push({ year: Number(year), amount: Number(amount), date: new Date(date) });
+    account.balance = Math.max(0, account.balance - Number(amount));
+    await account.save();
+    return res.json(account);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+// DELETE /api/tfsa/:id/withdrawals/:wid
+router.delete("/:id/withdrawals/:wid", async (req: Request, res: Response) => {
+  try {
+    const userId  = (req.user as any).id;
+    const account = await TFSAAccount.findOne({ _id: req.params.id, userId });
+    if (!account) return res.status(404).json({ message: "Not found" });
+
+    const w = account.withdrawals.find(x => (x as any)._id?.toString() === req.params.wid);
+    if (w) account.balance += w.amount;
+    account.withdrawals = account.withdrawals.filter(
+      x => (x as any)._id?.toString() !== req.params.wid
+    );
+    await account.save();
+    return res.json(account);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+export default router;

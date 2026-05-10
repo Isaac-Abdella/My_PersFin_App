@@ -5,6 +5,7 @@ import {
   Legend, ResponsiveContainer,
 } from "recharts";
 import './MLInsights.css';
+import { fmtCADShort } from "../components/charts";
 
 const CAD = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
@@ -192,7 +193,7 @@ export default function MLInsights() {
                   <LineChart data={buildChartData(forecastCat)} margin={{ top: 4, right: 12, bottom: 4, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={v => `$${v}`} tick={{ fontSize: 11 }} />
+                    <YAxis tickFormatter={v => fmtCADShort(Number(v))} tick={{ fontSize: 11 }} />
                     <Tooltip
                       formatter={((v: unknown, name: string | undefined) => [
                         v != null ? CAD(Number(v)) : "—",

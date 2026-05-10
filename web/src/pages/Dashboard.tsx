@@ -101,7 +101,18 @@ export default function Dashboard() {
     budgets:   { status: "idle", msg: "" },
   });
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    setAnalysisOpen(false);
+    setAnalysisResults({
+      netWorth:  { status: "idle", msg: "" },
+      debts:     { status: "idle", msg: "" },
+      recurring: { status: "idle", msg: "" },
+      forecast:  { status: "idle", msg: "" },
+      anomalies: { status: "idle", msg: "" },
+      budgets:   { status: "idle", msg: "" },
+    });
+  }, []);
 
   const loadData = async () => {
     try {
@@ -312,10 +323,10 @@ export default function Dashboard() {
     setShowAccountForm(false);
   };
 
-  const getBalanceLabel = (account: Account) =>
+  const renderBalance = (account: Account) =>
     LIABILITY_TYPES.has(account.type)
-      ? `Owing: ${fmtCAD(Math.abs(account.balance))}`
-      : fmtCAD(account.balance);
+      ? <span style={{ color: "#dc2626", fontWeight: 600 }}>−{fmtCAD(Math.abs(account.balance))}</span>
+      : <span style={{ color: "#059669", fontWeight: 600 }}>+{fmtCAD(account.balance)}</span>;
 
   if (loading) return <div className="loading">Loading...</div>;
 
@@ -491,7 +502,7 @@ export default function Dashboard() {
                   <tr key={account._id}>
                     <td style={{ fontWeight: 500 }}>{account.name}</td>
                     <td>{ACCOUNT_TYPE_LABELS[account.type] ?? account.type}</td>
-                    <td style={{ textAlign: "right" }}>{getBalanceLabel(account)}</td>
+                    <td style={{ textAlign: "right" }}>{renderBalance(account)}</td>
                     <td>{account.currency}</td>
                     <td style={{ textAlign: "center" }}>
                       <button onClick={() => handleEditAccount(account)}

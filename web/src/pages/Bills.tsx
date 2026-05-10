@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
+import { fmtMoney } from '../components/charts';
 import './Bills.css';
 
 interface Bill {
@@ -47,6 +48,8 @@ export default function Bills() {
   });
 
   useEffect(() => {
+    setShowForm(false);
+    setEditingId(null);
     fetchBills();
   }, [statusFilter]);
 
@@ -196,7 +199,7 @@ export default function Bills() {
         <div className="summary-grid">
           <div className="summary-card">
             <div className="summary-label">Total Monthly</div>
-            <div className="summary-value">${summary.totalMonthly.toFixed(2)}</div>
+            <div className="summary-value">{fmtMoney(summary.totalMonthly)}</div>
           </div>
           <div className="summary-card">
             <div className="summary-label">Active Bills</div>
@@ -358,11 +361,11 @@ export default function Bills() {
                 <div className="bill-name">{bill.name}</div>
                 <div className="bill-details">
                   <span className="frequency-badge">{bill.frequency}</span>
-                  <span className="monthly-equiv">≈ ${bill.monthlyEquivalent.toFixed(2)}/mo</span>
+                  <span className="monthly-equiv">≈ {fmtMoney(bill.monthlyEquivalent)}/mo</span>
                 </div>
               </div>
 
-              <div className="bill-amount">${bill.amount.toFixed(2)}</div>
+              <div className="bill-amount">{fmtMoney(bill.amount)}</div>
 
               <div className="bill-due">
                 <div className="due-label">
@@ -398,7 +401,7 @@ export default function Bills() {
             {Object.entries(summary.byCategory).map(([category, amount]) => (
               <div key={category} className="category-item">
                 <span className="category-name">{category}</span>
-                <span className="category-amount">${amount.toFixed(2)}</span>
+                <span className="category-amount">{fmtMoney(amount)}</span>
               </div>
             ))}
           </div>

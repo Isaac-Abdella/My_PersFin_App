@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
+import { fmtMoney } from "../components/charts";
 import "./InflationTracker.css";
 
 interface CpiCategory {
@@ -191,7 +192,7 @@ export default function InflationTracker() {
               </div>
               <div className="power-stat">
                 <div className="power-stat-label">$100 buys only…</div>
-                <div className="power-stat-value" style={{ color: "#d97706" }}>${purchasingPower.toFixed(2)} worth</div>
+                <div className="power-stat-value" style={{ color: "#d97706" }}>{fmtMoney(purchasingPower)} worth</div>
               </div>
             </div>
             <div className="power-year-list">
@@ -202,7 +203,7 @@ export default function InflationTracker() {
                   <div key={yr} className="power-year-row">
                     <span className="power-year-label">Year {yr}</span>
                     <span style={{ color: "var(--danger)" }}>+{cumul.toFixed(1)}% inflation</span>
-                    <span style={{ color: "#d97706" }}>${pw.toFixed(2)} value</span>
+                    <span style={{ color: "#d97706" }}>{fmtMoney(pw)} value</span>
                   </div>
                 );
               })}

@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { api } from "../api";
 import type { Transaction, Account, CategoryMajor } from "../types";
 import { CATEGORY_CATALOG } from "../data/categoryCatalog";
-import { TrendAreaChart } from "../components/charts";
+import { TrendAreaChart, fmtMoney } from "../components/charts";
 import './Transactions.css';
 
 const ITEMS_PER_PAGE = 100;
@@ -667,7 +667,7 @@ export default function Transactions() {
                   }}
                 >
                   <p style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>
-                    Duplicate Group {groupIdx + 1} - {group[0].description} (${group[0].amount.toFixed(2)})
+                    Duplicate Group {groupIdx + 1} - {group[0].description} ({fmtMoney(group[0].amount)})
                   </p>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                     <thead>
@@ -695,7 +695,7 @@ export default function Transactions() {
                             )}
                           </td>
                           <td style={{ padding: "0.5rem" }}>{tx.description}</td>
-                          <td style={{ padding: "0.5rem" }}>${tx.amount.toFixed(2)}</td>
+                          <td style={{ padding: "0.5rem" }}>{fmtMoney(tx.amount)}</td>
                           <td style={{ padding: "0.5rem" }}>{tx.category || "-"}</td>
                           <td style={{ textAlign: "center", padding: "0.5rem" }}>
                             {idx > 0 && (
@@ -850,7 +850,7 @@ export default function Transactions() {
                     <span className={`badge ${txn.type}`}>{txn.type}</span>
                   </td>
                   <td className={txn.type === "expense" ? "negative" : "positive"}>
-                    {txn.type === "expense" ? "-" : "+"}${txn.amount.toFixed(2)}
+                    {txn.type === "expense" ? "−" : "+"}{fmtMoney(txn.amount)}
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: "8px" }}>

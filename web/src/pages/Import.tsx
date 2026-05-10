@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../api";
 import type { Account } from "../types";
+import { fmtMoney } from "../components/charts";
 import './Import.css';
 
 // ── Canadian bank catalogue ───────────────────────────────────────────────────
@@ -676,7 +677,7 @@ export default function Import() {
         <select value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
           <option value="">— Select account —</option>
           {accounts.map(acc => (
-            <option key={acc._id} value={acc._id}>{acc.name} — ${acc.balance.toFixed(2)}</option>
+            <option key={acc._id} value={acc._id}>{acc.name} — {fmtMoney(acc.balance)}</option>
           ))}
         </select>
       </label>
@@ -828,7 +829,7 @@ export default function Import() {
                       {detectedDuplicates.map((dup, idx) => (
                         <label key={idx} className={`dup-review-item${selectedDuplicatesToKeep.has(dup.key) ? " selected" : " unselected"}`}>
                           <input type="checkbox" checked={selectedDuplicatesToKeep.has(dup.key)} onChange={() => handleToggleDuplicate(dup.key)} />
-                          <div><strong>{new Date(dup.date).toLocaleDateString()}</strong> — ${dup.amount.toFixed(2)} — {dup.description}</div>
+                          <div><strong>{new Date(dup.date).toLocaleDateString()}</strong> — {fmtMoney(dup.amount)} — {dup.description}</div>
                         </label>
                       ))}
                     </div>
@@ -1028,7 +1029,7 @@ export default function Import() {
                             <td style={{ whiteSpace: "nowrap" }}>{t.postedDate}</td>
                             <td style={{ maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={t.descriptionClean}>{t.descriptionClean}</td>
                             <td>{t.category}</td>
-                            <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>${t.amount.toFixed(2)}</td>
+                            <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{fmtMoney(t.amount)}</td>
                             <td><span className={`pdf-tx-type-badge ${t.type}`}>{t.type}</span></td>
                           </tr>
                         ))}

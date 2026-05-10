@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
 import './Goals.css';
-import { ProgressGauge, GaugeRow } from '../components/charts';
+import { ProgressGauge, GaugeRow, fmtMoney } from '../components/charts';
 
 interface Goal {
   _id: string;
@@ -276,7 +276,7 @@ export default function Goals() {
                 key={goal._id}
                 value={Math.min(goal.progressPercentage, 100)}
                 label={goal.name}
-                sublabel={`$${goal.currentAmount.toFixed(0)} / $${goal.targetAmount.toFixed(0)}`}
+                sublabel={`${fmtMoney(goal.currentAmount)} / ${fmtMoney(goal.targetAmount)}`}
                 warnAt={50}
                 dangerAt={80}
               />
@@ -320,8 +320,8 @@ export default function Goals() {
 
               <div className="goal-progress">
                 <div className="progress-info">
-                  <span>${goal.currentAmount.toFixed(2)}</span>
-                  <span className="progress-total">${goal.targetAmount.toFixed(2)}</span>
+                  <span>{fmtMoney(goal.currentAmount)}</span>
+                  <span className="progress-total">{fmtMoney(goal.targetAmount)}</span>
                 </div>
                 <div className="progress-bar">
                   <div
@@ -339,7 +339,7 @@ export default function Goals() {
                 </div>
                 <div className="detail">
                   <span className="label">Monthly Need:</span>
-                  <span className="value">${goal.recommendedMonthlyContribution.toFixed(2)}</span>
+                  <span className="value">{fmtMoney(goal.recommendedMonthlyContribution)}</span>
                 </div>
               </div>
 

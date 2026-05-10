@@ -603,9 +603,9 @@ export default function Debts() {
                 <tr key={debt._id}>
                   <td>{debt.name}</td>
                   <td>{debt.type}</td>
-                  <td className="negative">${debt.currentBalance.toFixed(2)}</td>
+                  <td className="negative">{CAD(debt.currentBalance)}</td>
                   <td>{debt.interestRate.toFixed(2)}%</td>
-                  <td>${debt.minimumPayment.toFixed(2)}</td>
+                  <td>{CAD(debt.minimumPayment)}</td>
                   <td>
                     {debt.nextDueDate
                       ? new Date(debt.nextDueDate).toLocaleDateString()
@@ -673,19 +673,19 @@ export default function Debts() {
               <div className="card">
                 <h4>Avalanche</h4>
                 <p>Payoff Time: <strong>{strategies.avalanche?.totalYears} years</strong></p>
-                <p>Interest Cost: <strong>${(strategies.avalanche?.totalInterestPaid ?? 0).toFixed(2)}</strong></p>
+                <p>Interest Cost: <strong>{CAD(strategies.avalanche?.totalInterestPaid ?? 0)}</strong></p>
               </div>
               <div className="card">
                 <h4>Snowball</h4>
                 <p>Payoff Time: <strong>{strategies.snowball?.totalYears} years</strong></p>
-                <p>Interest Cost: <strong>${(strategies.snowball?.totalInterestPaid ?? 0).toFixed(2)}</strong></p>
+                <p>Interest Cost: <strong>{CAD(strategies.snowball?.totalInterestPaid ?? 0)}</strong></p>
               </div>
               <div className="card">
                 <h4>Best Interest Saver</h4>
                 <p>
                   Avalanche saves vs Snowball:{" "}
                   <strong>
-                    ${((strategies.snowball?.totalInterestPaid ?? 0) - (strategies.avalanche?.totalInterestPaid ?? 0)).toFixed(2)}
+                    {CAD((strategies.snowball?.totalInterestPaid ?? 0) - (strategies.avalanche?.totalInterestPaid ?? 0))}
                   </strong>
                 </p>
               </div>
@@ -695,7 +695,7 @@ export default function Debts() {
           {optimizer && (
             <div className="debt-planner-grid">
               <h4>Payment Optimizer</h4>
-              <p>Minimum total: ${optimizer.totalMinimumPerCadence.toFixed(2)} | Extra: ${optimizer.extraPerCadence.toFixed(2)}</p>
+              <p>Minimum total: {CAD(optimizer.totalMinimumPerCadence)} | Extra: {CAD(optimizer.extraPerCadence)}</p>
               <table>
                 <thead>
                   <tr>
@@ -711,8 +711,8 @@ export default function Debts() {
                     <tr key={a.debtId}>
                       <td>{a.debtName}</td>
                       <td>{a.interestRate.toFixed(2)}%</td>
-                      <td>${a.minimumPerCadence.toFixed(2)}</td>
-                      <td>${a.recommendedPerCadence.toFixed(2)}</td>
+                      <td>{CAD(a.minimumPerCadence)}</td>
+                      <td>{CAD(a.recommendedPerCadence)}</td>
                       <td>{a.focusDebt ? "✓ Focus" : "—"}</td>
                     </tr>
                   ))}
@@ -725,9 +725,9 @@ export default function Debts() {
             <div className="debt-whatif">
               <h4>What-if Simulation</h4>
               <p>
-                Adding ${Number(extraPayment).toFixed(2)} per {cadence === "biweekly" ? "paycheck" : "month"} saves
+                Adding {CAD(Number(extraPayment))} per {cadence === "biweekly" ? "paycheck" : "month"} saves
                 <strong> {whatIf.comparison.monthsSaved} month(s)</strong> and about
-                <strong> ${whatIf.comparison.interestSaved.toFixed(2)}</strong> in interest.
+                <strong> {CAD(whatIf.comparison.interestSaved)}</strong> in interest.
               </p>
             </div>
           )}
@@ -758,7 +758,7 @@ export default function Debts() {
                       : "-"}
                     <div style={{ color: "var(--text-light)", fontSize: "0.8rem" }}>{debt.dueScheduleType || "specific"}</div>
                   </td>
-                  <td>${debt.minimumPayment.toFixed(2)}</td>
+                  <td>{CAD(debt.minimumPayment)}</td>
                 </tr>
               ))}
             </tbody>
@@ -774,7 +774,7 @@ export default function Debts() {
             Click <strong>Detect &amp; Import</strong> to automatically find debts from your liability accounts,
             or click <strong>Add Debt</strong> to enter one manually.
           </p>
-          <p>Total debt tracked: ${totalDebt.toFixed(2)}</p>
+          <p>Total debt tracked: {CAD(totalDebt)}</p>
         </div>
       )}
     </div>

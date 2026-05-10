@@ -12,6 +12,13 @@ const router = Router();
 // All routes require authentication
 router.use(requireAuth);
 
+// Account types that represent liabilities, not assets.
+// Must stay in sync with the same constant in netWorth.ts and Accounts.tsx.
+const LIABILITY_TYPES = new Set([
+  'credit-card', 'line-of-credit', 'mortgage',
+  'auto-loan', 'personal-loan', 'student-loan',
+]);
+
 // Get spending by category
 router.get("/spending-by-category", async (req: Request, res: Response) => {
   try {
@@ -177,20 +184,15 @@ router.get("/overview", async (req: Request, res: Response) => {
       })
     ]);
 
-    const totalBalance = accounts.reduce((sum, a) => {
-      // For credit cards, the balance is amount OWED (liability), not an asset
-      if (a.type === "credit-card") {
-        return sum;  // Don't add credit card balance to assets
-      }
-      return sum + a.balance;
-    }, 0);
-
-    // Calculate total credit card debt (amount owed)
-    const totalCreditCardDebt = accounts
-      .filter(a => a.type === "credit-card")
+    const totalBalance = accounts
+      .filter(a => !LIABILITY_TYPES.has(a.type))
       .reduce((sum, a) => sum + a.balance, 0);
 
-    const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0) + totalCreditCardDebt;
+    const accountLiabilities = accounts
+      .filter(a => LIABILITY_TYPES.has(a.type))
+      .reduce((sum, a) => sum + a.balance, 0);
+
+    const totalDebt = debts.reduce((sum, d) => sum + d.currentBalance, 0) + accountLiabilities;
     const netWorth = totalBalance - totalDebt;
 
     const totalMonthlyExpenses = monthlyExpenses.reduce((sum, t) => sum + t.amount, 0);
@@ -418,9 +420,6 @@ const ASSET_GROUPS: Record<string, { label: string; color: string }> = {
   "investment": { label: "Investments", color: "#3B82F6" },
   "other":      { label: "Other",       color: "#9CA3AF" },
 };
-// Liability-type accounts are excluded from allocation
-const LIABILITY_TYPES = new Set(["credit-card", "line-of-credit", "student-loan", "mortgage", "auto-loan", "personal-loan"]);
-
 router.get("/investment-allocation", async (req: Request, res: Response) => {
   try {
     const userId   = (req.user as any).id;
@@ -505,14 +504,14 @@ router.get("/financial-snapshot", async (req: Request, res: Response) => {
 
     // Asset / liability split from accounts
     const assets = accounts
-      .filter(a => !LIABILITY_TYPES.has(a.type) && a.balance > 0)
+      .filter(a => !LIABILITY_TYPES.has(a.type))
       .reduce((s, a) => s + a.balance, 0);
 
-    const ccDebt = accounts
-      .filter(a => a.type === "credit-card")
+    const accountLiabilities = accounts
+      .filter(a => LIABILITY_TYPES.has(a.type))
       .reduce((s, a) => s + a.balance, 0);
 
-    const totalDebt        = debts.reduce((s, d) => s + d.currentBalance, 0) + ccDebt;
+    const totalDebt        = debts.reduce((s, d) => s + d.currentBalance, 0) + accountLiabilities;
     const totalLiabilities = totalDebt;
     const netWorth         = assets - totalLiabilities;
 

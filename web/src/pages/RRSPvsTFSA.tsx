@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import "./RRSPvsTFSA.css";
+import { fmtCADShort } from "../components/charts";
 
 const PROVINCES = [
   { code: "AB", name: "Alberta" },
@@ -270,7 +271,7 @@ export default function RRSPvsTFSA() {
                 <BarChart data={result.growthTable} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" tickFormatter={(v) => `Yr ${v}`} />
-                  <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <YAxis tickFormatter={(v) => fmtCADShort(Number(v))} />
                   <Tooltip formatter={((v: number | undefined) => fmt(v ?? 0)) as any} />
                   <Legend />
                   <Bar dataKey="rrspValue" name="RRSP (after-tax + refund)" fill="#3b82f6" />

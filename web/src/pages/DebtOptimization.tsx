@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { api } from "../api";
 import "./DebtOptimization.css";
-import { DonutChart } from "../components/charts";
+import { DonutChart, fmtMoney } from "../components/charts";
 
 interface Debt {
   _id: string;
@@ -454,7 +454,7 @@ export default function DebtOptimization(): ReactElement {
                       <span className="debt-type">{debt.type}</span>
                     </div>
                     <div className="debt-details">
-                      <span className="balance">${debt.currentBalance.toFixed(2)}</span>
+                      <span className="balance">{fmtMoney(debt.currentBalance)}</span>
                       <span className="rate">{debt.interestRate.toFixed(2)}%</span>
                     </div>
                   </label>
@@ -536,10 +536,10 @@ export default function DebtOptimization(): ReactElement {
                   min={totalMinimumPayment}
                 />
               </div>
-              <small>Minimum required: ${totalMinimumPayment.toFixed(2)}/month (total of all minimum payments)</small>
+              <small>Minimum required: {fmtMoney(totalMinimumPayment)}/month (total of all minimum payments)</small>
               {monthlyBudget > 0 && monthlyBudget >= totalMinimumPayment && (
                 <small className="extra-payment">
-                  💪 Extra payment per month: ${(monthlyBudget - totalMinimumPayment).toFixed(2)}
+                  💪 Extra payment per month: {fmtMoney(monthlyBudget - totalMinimumPayment)}
                 </small>
               )}
             </div>
@@ -569,11 +569,11 @@ export default function DebtOptimization(): ReactElement {
                 </div>
                 <div className="plan-stat">
                   <span className="label">Total Interest</span>
-                  <span className="value">${plan.totalInterest.toFixed(2)}</span>
+                  <span className="value">{fmtMoney(plan.totalInterest)}</span>
                 </div>
                 <div className="plan-stat">
                   <span className="label">Monthly Payment</span>
-                  <span className="value">${plan.monthlyPayment.toFixed(2)}</span>
+                  <span className="value">{fmtMoney(plan.monthlyPayment)}</span>
                 </div>
               </div>
 
@@ -583,18 +583,18 @@ export default function DebtOptimization(): ReactElement {
                   <div className="comparison-grid">
                     <div className="comparison-card">
                       <h4>Avalanche</h4>
-                      <p className="stat">Interest: <strong>${comparisons.avalanche.totalInterest.toFixed(2)}</strong></p>
+                      <p className="stat">Interest: <strong>{fmtMoney(comparisons.avalanche.totalInterest)}</strong></p>
                       <p className="stat">Months: <strong>{comparisons.avalanche.payoffMonths}</strong></p>
                       {strategyType !== "avalanche" && (
                         <p className="savings">
-                          💡 You could save ${Math.abs(plan.totalInterest - comparisons.avalanche.totalInterest).toFixed(2)}
+                          💡 You could save {fmtMoney(Math.abs(plan.totalInterest - comparisons.avalanche.totalInterest))}
                           {plan.totalInterest > comparisons.avalanche.totalInterest ? " by using Avalanche" : " with your strategy"}
                         </p>
                       )}
                     </div>
                     <div className="comparison-card">
                       <h4>Snowball</h4>
-                      <p className="stat">Interest: <strong>${comparisons.snowball.totalInterest.toFixed(2)}</strong></p>
+                      <p className="stat">Interest: <strong>{fmtMoney(comparisons.snowball.totalInterest)}</strong></p>
                       <p className="stat">Months: <strong>{comparisons.snowball.payoffMonths}</strong></p>
                       {strategyType !== "snowball" && (
                         <p className="savings">✅ Psychological wins with snowball</p>
@@ -627,7 +627,7 @@ export default function DebtOptimization(): ReactElement {
                   {lumpSumResult.targetDebt && (
                     <div className="result-details">
                       <p><strong>Best Applied To:</strong> {lumpSumResult.targetDebt.name} ({lumpSumResult.targetDebt.interestRate.toFixed(2)}%)</p>
-                      <p><strong>Annual Interest Savings:</strong> ${lumpSumResult.annualInterestSavings.ifAppliedToHighestInterest.toFixed(2)}</p>
+                      <p><strong>Annual Interest Savings:</strong> {fmtMoney(lumpSumResult.annualInterestSavings.ifAppliedToHighestInterest)}</p>
                     </div>
                   )}
                 </div>
@@ -664,12 +664,12 @@ export default function DebtOptimization(): ReactElement {
                         <div className="comparison-card">
                           <h4>Standard Payoff</h4>
                           <p className="stat">Payoff: <strong>{mortgageResults.standardPayoff.payoffMonths}</strong> months</p>
-                          <p className="stat">Interest: <strong>${mortgageResults.standardPayoff.totalInterest.toFixed(2)}</strong></p>
+                          <p className="stat">Interest: <strong>{fmtMoney(mortgageResults.standardPayoff.totalInterest)}</strong></p>
                         </div>
                         <div className="comparison-card">
                           <h4>Accelerated Payoff</h4>
                           <p className="stat">Payoff: <strong>{mortgageResults.acceleratedPayoff.payoffMonths}</strong> months</p>
-                          <p className="stat">Interest: <strong>${mortgageResults.acceleratedPayoff.totalInterest.toFixed(2)}</strong></p>
+                          <p className="stat">Interest: <strong>{fmtMoney(mortgageResults.acceleratedPayoff.totalInterest)}</strong></p>
                         </div>
                       </div>
                       <p className="recommendation">{mortgageResults.recommendation}</p>
@@ -697,19 +697,19 @@ export default function DebtOptimization(): ReactElement {
                   <div className="comparison-grid">
                     <div className="comparison-card">
                       <h4>Keep Individual Debts</h4>
-                      <p className="stat">Interest: <strong>${consolidationResults.currentPlan.totalInterest.toFixed(2)}</strong></p>
+                      <p className="stat">Interest: <strong>{fmtMoney(consolidationResults.currentPlan.totalInterest)}</strong></p>
                       <p className="stat">Payoff: <strong>{consolidationResults.currentPlan.monthlyPayment}</strong> months</p>
                     </div>
                     <div className="comparison-card">
                       <h4>Consolidate</h4>
-                      <p className="stat">Interest: <strong>${consolidationResults.consolidatedPlan.totalInterest.toFixed(2)}</strong></p>
+                      <p className="stat">Interest: <strong>{fmtMoney(consolidationResults.consolidatedPlan.totalInterest)}</strong></p>
                       <p className="stat">Rate: <strong>{consolidationResults.consolidatedPlan.consolidationRate}%</strong></p>
                     </div>
                   </div>
                   <p className="recommendation">{consolidationResults.analysis.recommendation}</p>
                   {consolidationResults.analysis.interestSavings > 0 && (
                     <p className="savings">
-                      💰 Potential savings: ${consolidationResults.analysis.interestSavings.toFixed(2)}
+                      💰 Potential savings: {fmtMoney(consolidationResults.analysis.interestSavings)}
                     </p>
                   )}
                 </div>

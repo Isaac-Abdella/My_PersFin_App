@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { fmtCADShort } from '../components/charts';
+import { fmtCADShort, fmtMoney } from '../components/charts';
 import './NetWorth.css';
 
 interface NetWorthSnapshot {
@@ -119,19 +119,21 @@ export default function NetWorth() {
       <div className="summary-grid">
         <div className="summary-card">
           <div className="summary-label">Total Assets</div>
-          <div className="summary-value">${current.totalAssets.toFixed(2)}</div>
-          <div className="summary-change">↑ {current.breakdown.assets.cash.toFixed(0)} cash</div>
+          <div className="summary-value" style={{ color: '#059669' }}>+{fmtMoney(current.totalAssets)}</div>
+          <div className="summary-change">↑ {fmtMoney(current.breakdown.assets.cash)} cash</div>
         </div>
 
         <div className="summary-card">
           <div className="summary-label">Total Liabilities</div>
-          <div className="summary-value">${current.totalLiabilities.toFixed(2)}</div>
-          <div className="summary-change">↓ {current.breakdown.liabilities.loans.toFixed(0)} loans</div>
+          <div className="summary-value" style={{ color: '#dc2626' }}>−{fmtMoney(current.totalLiabilities)}</div>
+          <div className="summary-change">↓ {fmtMoney(current.breakdown.liabilities.loans)} loans</div>
         </div>
 
         <div className="summary-card net-worth-card">
           <div className="summary-label">Net Worth</div>
-          <div className="summary-value">${current.netWorth.toFixed(2)}</div>
+          <div className="summary-value" style={{ color: current.netWorth >= 0 ? '#059669' : '#dc2626' }}>
+            {current.netWorth >= 0 ? '+' : '−'}{fmtMoney(Math.abs(current.netWorth))}
+          </div>
           <div className="summary-change">Your financial position</div>
         </div>
       </div>
@@ -157,7 +159,7 @@ export default function NetWorth() {
                     <Cell key={`cell-${index}`} fill={assetColors[index % assetColors.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: any) => `$${value.toFixed(2)}`} />
+                <Tooltip formatter={(value: any) => fmtMoney(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -182,7 +184,7 @@ export default function NetWorth() {
                     <Cell key={`cell-${index}`} fill={liabilityColors[index % liabilityColors.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: any) => `$${value.toFixed(2)}`} />
+                <Tooltip formatter={(value: any) => fmtMoney(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -206,7 +208,7 @@ export default function NetWorth() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
-              <Tooltip formatter={(value: any) => `$${value.toFixed(2)}`} />
+              <Tooltip formatter={(value: any) => fmtMoney(Number(value))} />
               <Legend />
               <Line
                 type="monotone"
@@ -254,7 +256,7 @@ export default function NetWorth() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="year" />
               <YAxis tickFormatter={(v) => fmtCADShort(v)} />
-              <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString()}`} />
+              <Tooltip formatter={(v: any) => fmtMoney(Number(v))} />
               <Legend />
               <Line type="monotone" dataKey="optimistic" stroke="#10B981" strokeWidth={2} name="Optimistic (9%)" dot={false} />
               <Line type="monotone" dataKey="base" stroke="#4F46E5" strokeWidth={2} name="Base (6%)" dot={false} />
@@ -275,12 +277,12 @@ export default function NetWorth() {
             {Object.entries(current.breakdown.assets).map(([key, value]) => (
               <div key={key} className="breakdown-item">
                 <span className="breakdown-label">{key.split(/(?=[A-Z])/).join(' ')}</span>
-                <span className="breakdown-value">${value.toFixed(2)}</span>
+                <span className="breakdown-value" style={{ color: '#059669' }}>+{fmtMoney(value)}</span>
               </div>
             ))}
             <div className="breakdown-item total">
               <span className="breakdown-label">Total Assets</span>
-              <span className="breakdown-value">${current.totalAssets.toFixed(2)}</span>
+              <span className="breakdown-value" style={{ color: '#059669', fontWeight: 700 }}>+{fmtMoney(current.totalAssets)}</span>
             </div>
           </div>
         </div>
@@ -291,12 +293,12 @@ export default function NetWorth() {
             {Object.entries(current.breakdown.liabilities).map(([key, value]) => (
               <div key={key} className="breakdown-item">
                 <span className="breakdown-label">{key.split(/(?=[A-Z])/).join(' ')}</span>
-                <span className="breakdown-value">${value.toFixed(2)}</span>
+                <span className="breakdown-value" style={{ color: '#dc2626' }}>−{fmtMoney(value)}</span>
               </div>
             ))}
             <div className="breakdown-item total">
               <span className="breakdown-label">Total Liabilities</span>
-              <span className="breakdown-value">${current.totalLiabilities.toFixed(2)}</span>
+              <span className="breakdown-value" style={{ color: '#dc2626', fontWeight: 700 }}>−{fmtMoney(current.totalLiabilities)}</span>
             </div>
           </div>
         </div>

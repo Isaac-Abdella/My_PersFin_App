@@ -36,6 +36,10 @@ import plaidRoutes from "./routes/plaid";
 import mlRoutes from "./routes/ml";
 import demoRoutes from "./routes/demo";
 import setupRoutes from "./routes/setup";
+import fhsaRoutes from "./routes/fhsa";
+import respRoutes from "./routes/resp";
+import tfsaTrackerRoutes from "./routes/tfsa";
+import rrspTrackerRoutes from "./routes/rrsp";
 import { startScheduler } from "./jobs/scheduler";
 
 const app = express();
@@ -141,6 +145,10 @@ app.use("/api/plaid", plaidRoutes);
 app.use("/api/ml", mlRoutes);
 app.use("/api/demo", demoRoutes);
 app.use("/api/setup", setupRoutes);
+app.use("/api/fhsa", fhsaRoutes);
+app.use("/api/resp", respRoutes);
+app.use("/api/tfsa-tracker", tfsaTrackerRoutes);
+app.use("/api/rrsp-tracker", rrspTrackerRoutes);
 
 // ── 6. SPA fallback — must come before error handler ─────────────────────────
 if (isProd) {

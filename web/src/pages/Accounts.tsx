@@ -73,6 +73,7 @@ const Accounts: React.FC = () => {
 
   // Bank accounts state
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [debtTotal, setDebtTotal] = useState(0);
   const [bankLoading, setBankLoading] = useState(true);
   const [showBankForm, setShowBankForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
@@ -104,9 +105,15 @@ const Accounts: React.FC = () => {
   const fetchBankAccounts = async () => {
     setBankLoading(true);
     try {
-      const res = await fetch('/api/accounts', { credentials: 'include' });
-      const data = await res.json();
-      setBankAccounts(Array.isArray(data) ? data : []);
+      const [acctRes, debtRes] = await Promise.all([
+        fetch('/api/accounts', { credentials: 'include' }),
+        fetch('/api/debts', { credentials: 'include' }),
+      ]);
+      const acctData = await acctRes.json();
+      const debtData = await debtRes.json();
+      setBankAccounts(Array.isArray(acctData) ? acctData : []);
+      const debts: { currentBalance: number }[] = Array.isArray(debtData) ? debtData : [];
+      setDebtTotal(debts.reduce((s, d) => s + d.currentBalance, 0));
     } catch (err) {
       console.error('Error fetching bank accounts:', err);
     } finally {
@@ -137,14 +144,28 @@ const Accounts: React.FC = () => {
     void fetchRegisteredAccounts();
   }, []);
 
-  // Auto-suggest account name when institution or type changes
+  // Close bank form and reset state when switching tabs
+  useEffect(() => {
+    setShowBankForm(false);
+    setEditingAccount(null);
+    setBankForm({
+      institution: 'TD (TD Canada Trust)',
+      institutionCustom: '',
+      type: 'chequing',
+      name: '',
+      openingBalance: '0',
+      currency: 'CAD',
+    });
+  }, [tab]);
+
+  // Auto-suggest account name when institution or type changes (never during edit)
   useEffect(() => {
     if (!editingAccount) {
       const inst = bankForm.institution === 'Other (specify)' ? bankForm.institutionCustom : bankForm.institution.split(' ')[0];
       const typLabel = TYPE_MAP[bankForm.type]?.label ?? '';
       setBankForm(f => ({ ...f, name: inst ? `${inst} ${typLabel}` : typLabel }));
     }
-  }, [bankForm.institution, bankForm.type, bankForm.institutionCustom]);
+  }, [bankForm.institution, bankForm.type, bankForm.institutionCustom, editingAccount]);
 
   // ── Bank account CRUD ────────────────────────────────────────────────────────
 
@@ -337,8 +358,10 @@ const Accounts: React.FC = () => {
       if (LIABILITY_TYPES.has(acct.type)) liabilities += acct.balance;
       else assets += acct.balance;
     }
+    // Also include Debt model entries (mortgages, loans added via Debts page)
+    liabilities += debtTotal;
     return { assets, liabilities, net: assets - liabilities };
-  }, [bankAccounts]);
+  }, [bankAccounts, debtTotal]);
 
   const filteredRegistered = accounts.filter(a => a.type === selectedType);
   const selectedTypeInfo = accountTypes.find(t => t.type === selectedType);

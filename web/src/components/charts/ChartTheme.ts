@@ -50,11 +50,19 @@ export function fmtCAD(value: number): string {
   }).format(value);
 }
 
+/** CAD with 2 decimal places and thousands commas — use for precise monetary display. */
+export function fmtMoney(value: number): string {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency", currency: "CAD",
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function fmtCADShort(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? "-" : "";
   if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000)     return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+  if (abs >= 10_000)    return `${sign}$${Math.round(abs / 1_000)}K`;
   return fmtCAD(value);
 }
 

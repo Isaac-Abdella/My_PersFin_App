@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ComposedChart, Area } from "recharts";
 import './RetirementProjector.css';
+import { fmtCADShort } from "../components/charts";
 
 const CAD = (n: number) => n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
 
@@ -203,7 +204,7 @@ export default function RetirementProjector() {
               <LineChart data={result.points}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="age" label={{ value: "Age", position: "insideBottom", offset: -2 }} tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                <YAxis tickFormatter={(v) => fmtCADShort(Number(v))} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(v) => CAD(Number(v))} labelFormatter={(l) => `Age ${l}`} />
                 <Legend />
                 <ReferenceLine x={retirementAge} stroke="#d97706" strokeDasharray="6 3" label={{ value: "Retire", position: "top", fontSize: 11 }} />
@@ -255,7 +256,7 @@ export default function RetirementProjector() {
                   <ComposedChart data={mcResult.points}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="age" tick={{ fontSize: 11 }} label={{ value: "Age", position: "insideBottom", offset: -2 }} />
-                    <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                    <YAxis tickFormatter={(v) => fmtCADShort(Number(v))} tick={{ fontSize: 11 }} />
                     <Tooltip formatter={(v) => CAD(Number(v))} labelFormatter={(l) => `Age ${l}`} />
                     <ReferenceLine x={retirementAge} stroke="#d97706" strokeDasharray="6 3" />
                     <Area type="monotone" dataKey="base" stackId="mc" stroke="none" fill="#4f46e5" fillOpacity={0.08} legendType="none" />

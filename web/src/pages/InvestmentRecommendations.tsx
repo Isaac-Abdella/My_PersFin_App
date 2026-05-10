@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { api } from "../api";
 import "./InvestmentRecommendations.css";
-import { DonutChart, TrendAreaChart } from "../components/charts";
+import { DonutChart, TrendAreaChart, fmtMoney } from "../components/charts";
 
 interface ETF {
   symbol: string;
@@ -149,8 +149,8 @@ export default function InvestmentRecommendations(): ReactElement {
               </div>
               <div className="stat-card">
                 <span className="label">Monthly Investment Needed</span>
-                <span className="value">${monthlyInvestment.toFixed(0)}</span>
-                <span className="sub">To reach ${goalAmount.toLocaleString()}</span>
+                <span className="value">{fmtMoney(monthlyInvestment)}</span>
+                <span className="sub">To reach {fmtMoney(goalAmount)}</span>
               </div>
               <div className="stat-card">
                 <span className="label">Success Probability</span>

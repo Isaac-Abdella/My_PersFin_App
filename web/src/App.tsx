@@ -22,7 +22,11 @@ import Settings from "./pages/Settings";
 import Properties from "./pages/Properties";
 import RRSPvsTFSA from "./pages/RRSPvsTFSA";
 import TFSARoom from "./pages/TFSARoom";
+import TFSATracker from "./pages/TFSATracker";
+import RRSPTracker from "./pages/RRSPTracker";
 import GICTracker from "./pages/GICTracker";
+import FHSATracker from "./pages/FHSATracker";
+import RESPTracker from "./pages/RESPTracker";
 import PortfolioRebalancing from "./pages/PortfolioRebalancing";
 import ETFModelPortfolios from "./pages/ETFModelPortfolios";
 import InvestmentPerformanceDashboard from "./pages/InvestmentPerformanceDashboard";
@@ -89,15 +93,19 @@ const NAV_GROUPS = [
       { to: "/etf-portfolios",             label: "ETF Portfolios"  },
       { to: "/gic-tracker",                label: "GIC Tracker"     },
       { to: "/properties",                 label: "Properties"      },
+      { to: "/fhsa-tracker",               label: "🏠 FHSA"         },
+      { to: "/resp-tracker",               label: "🎓 RESP"         },
     ],
   },
   {
     label: "Tax & Registered",
     items: [
-      { to: "/tax-planning",  label: "Tax Planning"  },
-      { to: "/rrsp-vs-tfsa",  label: "RRSP vs TFSA"  },
-      { to: "/tfsa-room",     label: "TFSA Room"     },
-      { to: "/income-types",  label: "Income Types"  },
+      { to: "/tax-planning",   label: "Tax Planning"   },
+      { to: "/rrsp-vs-tfsa",   label: "RRSP vs TFSA"   },
+      { to: "/tfsa-room",      label: "TFSA Room Calc"  },
+      { to: "/tfsa-tracker",   label: "💰 TFSA Tracker" },
+      { to: "/rrsp-tracker",   label: "📈 RRSP Tracker" },
+      { to: "/income-types",   label: "Income Types"   },
     ],
   },
   {
@@ -271,7 +279,11 @@ function Layout() {
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/rrsp-vs-tfsa" element={<RRSPvsTFSA />} />
                 <Route path="/tfsa-room" element={<TFSARoom />} />
+                <Route path="/tfsa-tracker" element={<TFSATracker />} />
+                <Route path="/rrsp-tracker" element={<RRSPTracker />} />
                 <Route path="/gic-tracker" element={<GICTracker />} />
+                <Route path="/fhsa-tracker" element={<FHSATracker />} />
+                <Route path="/resp-tracker" element={<RESPTracker />} />
                 <Route path="/portfolio-rebalancing" element={<PortfolioRebalancing />} />
                 <Route path="/etf-portfolios" element={<ETFModelPortfolios />} />
                 <Route path="/investment-performance" element={<InvestmentPerformanceDashboard />} />
