@@ -45,29 +45,32 @@ export function categoryColor(name: string, index: number): string {
 // ── Formatters ───────────────────────────────────────────────────────────────
 
 export function fmtCAD(value: number): string {
+  const n = isFinite(value) ? value : 0;
   return new Intl.NumberFormat("en-CA", {
     style: "currency", currency: "CAD", maximumFractionDigits: 0,
-  }).format(value);
+  }).format(n);
 }
 
 /** CAD with 2 decimal places and thousands commas — use for precise monetary display. */
 export function fmtMoney(value: number): string {
+  const n = isFinite(value) ? value : 0;
   return new Intl.NumberFormat("en-CA", {
     style: "currency", currency: "CAD",
     minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(value);
+  }).format(n);
 }
 
 export function fmtCADShort(value: number): string {
-  const abs = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
+  const n = isFinite(value) ? value : 0;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
   if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
   if (abs >= 10_000)    return `${sign}$${Math.round(abs / 1_000)}K`;
-  return fmtCAD(value);
+  return fmtCAD(n);
 }
 
 export function fmtPct(value: number): string {
-  return `${value.toFixed(1)}%`;
+  return `${(isFinite(value) ? value : 0).toFixed(1)}%`;
 }
 
 export function fmtMonth(value: string): string {

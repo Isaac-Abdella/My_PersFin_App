@@ -535,8 +535,10 @@ router.get("/financial-snapshot", async (req: Request, res: Response) => {
     const avgMonthlyExp       = pastExp.reduce((s, t) => s + t.amount, 0) / 3;
     const emergencyFundMonths = avgMonthlyExp > 0 ? cash / avgMonthlyExp : 0;
 
-    // Net worth trend from snapshots (newest first → reverse for chronological)
-    const netWorthTrend = [...snapshots].reverse().map(s => s.netWorth);
+    // Net worth trend: delta vs previous month (snapshots arrive newest-first)
+    const netWorthTrend = snapshots.length >= 2
+      ? snapshots[0].netWorth - snapshots[1].netWorth
+      : 0;
 
     // Goals aggregate
     const goalsProgress = goals.length

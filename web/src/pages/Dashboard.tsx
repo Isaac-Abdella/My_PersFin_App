@@ -535,8 +535,8 @@ export default function Dashboard() {
                style={{ margin: "0.2rem 0 0.25rem", fontSize: "1.6rem" }}>
               {fmtCAD(snapshot.netWorth)}
             </p>
-            <small style={{ color: snapshot.netWorthTrend >= 0 ? "#10B981" : "#EF4444" }}>
-              {snapshot.netWorthTrend >= 0 ? "▲" : "▼"} {fmtCAD(Math.abs(snapshot.netWorthTrend))} vs last month
+            <small style={{ color: (snapshot.netWorthTrend ?? 0) >= 0 ? "#10B981" : "#EF4444" }}>
+              {(snapshot.netWorthTrend ?? 0) >= 0 ? "▲" : "▼"} {fmtCAD(Math.abs(snapshot.netWorthTrend ?? 0))} vs last month
             </small>
           </div>
 
@@ -564,7 +564,7 @@ export default function Dashboard() {
           <div className="card">
             <h3 style={{ marginTop: 0, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#6B7280" }}>Savings Rate</h3>
             <p className="amount" style={{ margin: "0.2rem 0 0.25rem", fontSize: "1.6rem" }}>
-              {snapshot.savingsRate.toFixed(1)}%
+              {(isFinite(snapshot.savingsRate) ? snapshot.savingsRate : 0).toFixed(1)}%
             </p>
             <small style={{
               color: snapshot.savingsRate >= 20 ? "#10B981"
@@ -585,7 +585,7 @@ export default function Dashboard() {
                    : snapshot.debtRatio <= 50 ? "#F59E0B"
                    : "#EF4444",
             }}>
-              Debt-to-assets: {snapshot.debtRatio.toFixed(1)}%
+              Debt-to-assets: {(isFinite(snapshot.debtRatio) ? snapshot.debtRatio : 0).toFixed(1)}%
             </small>
           </div>
         </div>
@@ -669,7 +669,7 @@ export default function Dashboard() {
             <ProgressGauge
               value={Math.min((snapshot.emergencyFundMonths / 6) * 100, 100)}
               label="Emergency Fund"
-              sublabel={`${snapshot.emergencyFundMonths.toFixed(1)} / 6 months`}
+              sublabel={`${(isFinite(snapshot.emergencyFundMonths) ? snapshot.emergencyFundMonths : 0).toFixed(1)} / 6 months`}
               warnAt={50}
               dangerAt={80}
             />
