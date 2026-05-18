@@ -539,28 +539,28 @@ const Accounts: React.FC = () => {
                       const isLiability = meta.isLiability;
                       return (
                         <div key={acct._id} className="account-card" style={{ position: 'relative' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                            <span style={{ fontSize: '1.3rem' }}>{meta.icon}</span>
-                            <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{meta.icon}</span>
+                            <div style={{ display: 'flex', gap: 3 }}>
                               <button
                                 onClick={() => startEditBankAccount(acct)}
-                                style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--border, #e5e7eb)', background: 'transparent', cursor: 'pointer' }}
+                                style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border, #e5e7eb)', background: 'transparent', cursor: 'pointer' }}
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteBankAccount(acct._id, acct.name)}
-                                style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, border: 'none', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                                style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: 4, border: 'none', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
                               >
-                                Delete
+                                Del
                               </button>
                             </div>
                           </div>
-                          <h4 style={{ margin: '0 0 4px' }}>{acct.name}</h4>
+                          <h4 style={{ margin: '0 0 3px' }}>{acct.name}</h4>
                           <span className="type-badge">{meta.label}</span>
-                          <p className="balance" style={{ color: isLiability ? '#dc2626' : '#059669', marginTop: 8 }}>
+                          <p className="balance" style={{ color: isLiability ? '#dc2626' : '#059669', marginTop: 6 }}>
                             {isLiability ? '−' : ''}{CAD(acct.balance)}
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-light, #6b7280)', marginLeft: 4 }}>{acct.currency}</span>
+                            <span style={{ fontSize: '0.62rem', color: 'var(--text-light, #6b7280)', marginLeft: 3 }}>{acct.currency}</span>
                           </p>
                         </div>
                       );
