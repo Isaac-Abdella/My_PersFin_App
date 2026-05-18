@@ -18,7 +18,11 @@ import { Goal } from "../models/Goal";
 import { NetWorthSnapshot } from "../models/NetWorthSnapshot";
 import { DemoSnapshot } from "../models/DemoSnapshot";
 
-const DEMO_EMAILS = Array.from({ length: 10 }, (_, i) => `user_test${i + 1}@demo.com`);
+const DEMO_EMAILS = [
+  "user_test@demo.com",
+  // Legacy accounts — safe to clear if they still exist in the DB
+  ...Array.from({ length: 10 }, (_, i) => `user_test${i + 1}@demo.com`),
+];
 
 async function main() {
   await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/persfin");

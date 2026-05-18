@@ -954,32 +954,41 @@ export async function seedProfile(profile: DemoProfile, passwordHash: string, op
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+const DEMO_EMAIL = "user_test@demo.com";
+const DEFAULT_PROFILE_INDEX = 4; // The Young Professional — good neutral starter
+
 async function main(): Promise<void> {
   await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/persfin");
   console.log("Connected to MongoDB\n");
 
-  // Migrate the Transaction plaidTransactionId index from sparse to partialFilterExpression.
-  // The old sparse compound index is ineffective when userId is always present.
   try {
     await Transaction.collection.dropIndex("userId_1_plaidTransactionId_1");
-    console.log("Dropped old sparse plaidTransactionId index.");
   } catch { /* index may not exist yet */ }
   await Transaction.collection.createIndex(
     { userId: 1, plaidTransactionId: 1 },
     { unique: true, partialFilterExpression: { plaidTransactionId: { $type: "string" } } }
   );
-  console.log("Created partial-filter plaidTransactionId index.\n");
 
-  const passwordHash = await bcrypt.hash("Demo1234!", 10);
-
-  console.log("Seeding 10 demo profiles...\n");
-  for (const profile of PROFILES) {
-    await seedProfile(profile, passwordHash);
+  const existing = await User.findOne({ email: DEMO_EMAIL });
+  if (existing) {
+    console.log(`${DEMO_EMAIL} already exists — skipping. Run clearDemoUsers first to recreate.`);
+  } else {
+    const passwordHash = await bcrypt.hash("Demo1234!", 10);
+    const user = await User.create({
+      email: DEMO_EMAIL,
+      passwordHash,
+      firstName: "Demo",
+      lastName: "User",
+      province: "ON",
+      demoProfileIndex: DEFAULT_PROFILE_INDEX,
+    });
+    await seedDataForUser(user._id, PROFILES[DEFAULT_PROFILE_INDEX - 1]);
+    console.log(`✓  ${DEMO_EMAIL} created with "${PROFILES[DEFAULT_PROFILE_INDEX - 1].firstName}'s" profile (3 years of history)`);
   }
 
-  console.log(`\nDone! All 10 demo users seeded.`);
-  console.log(`Password for all accounts: Demo1234!`);
-  console.log(`Emails: user_test1@demo.com ... user_test10@demo.com`);
+  console.log(`\nDone!`);
+  console.log(`Email:    ${DEMO_EMAIL}`);
+  console.log(`Password: Demo1234!`);
 }
 
 // Only run when executed directly (not when imported as a module)

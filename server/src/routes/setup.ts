@@ -26,7 +26,28 @@ import { DemoSnapshot } from "../models/DemoSnapshot";
 
 const router = Router();
 
-const DEMO_EMAILS = Array.from({ length: 10 }, (_, i) => `user_test${i + 1}@demo.com`);
+const DEMO_EMAIL = "user_test@demo.com";
+const DEFAULT_PROFILE_INDEX = 4; // The Young Professional
+
+// Legacy emails — cleared when force=true to clean up old multi-user seeding
+const LEGACY_DEMO_EMAILS = Array.from({ length: 10 }, (_, i) => `user_test${i + 1}@demo.com`);
+
+async function clearUser(email: string) {
+  const user = await User.findOne({ email });
+  if (!user) return;
+  const uid = user._id as any;
+  await Promise.all([
+    Transaction.deleteMany({ userId: uid }),
+    Account.deleteMany({ userId: uid }),
+    Budget.deleteMany({ userId: uid }),
+    Bill.deleteMany({ userId: uid }),
+    Goal.deleteMany({ userId: uid }),
+    NetWorthSnapshot.deleteMany({ userId: uid }),
+    DemoSnapshot.deleteOne({ userId: uid }),
+  ]);
+  await User.deleteOne({ _id: uid });
+  console.log(`  cleared ${email}`);
+}
 
 router.post("/seed-demo", async (req: Request, res: Response) => {
   const secret = process.env.SETUP_SECRET;
@@ -37,7 +58,7 @@ router.post("/seed-demo", async (req: Request, res: Response) => {
   const force: boolean = req.body.force === true;
 
   try {
-    const { seedProfile, PROFILES } = await import("../scripts/seedDemoUsers");
+    const { seedDataForUser, PROFILES } = await import("../scripts/seedDemoUsers");
 
     // Re-create the partial-filter index (idempotent)
     try {
@@ -48,39 +69,38 @@ router.post("/seed-demo", async (req: Request, res: Response) => {
       { unique: true, partialFilterExpression: { plaidTransactionId: { $type: "string" } } }
     );
 
-    // If force=true, wipe all 10 demo users and their data first
     if (force) {
-      console.log("Force flag set — clearing existing demo users...");
-      for (const email of DEMO_EMAILS) {
-        const user = await User.findOne({ email });
-        if (!user) continue;
-        const uid = user._id as any;
-        await Promise.all([
-          Transaction.deleteMany({ userId: uid }),
-          Account.deleteMany({ userId: uid }),
-          Budget.deleteMany({ userId: uid }),
-          Bill.deleteMany({ userId: uid }),
-          Goal.deleteMany({ userId: uid }),
-          NetWorthSnapshot.deleteMany({ userId: uid }),
-          DemoSnapshot.deleteOne({ userId: uid }),
-        ]);
-        await User.deleteOne({ _id: uid });
-        console.log(`  cleared ${email}`);
-      }
+      console.log("Force flag — clearing demo account and any legacy accounts...");
+      await clearUser(DEMO_EMAIL);
+      for (const email of LEGACY_DEMO_EMAILS) await clearUser(email);
+    }
+
+    // Create the single demo user if not already present
+    let user = await User.findOne({ email: DEMO_EMAIL });
+    if (user) {
+      return res.json({
+        ok: true,
+        message: `${DEMO_EMAIL} already exists. Pass force:true to wipe and recreate.`,
+        email: DEMO_EMAIL,
+        password: "Demo1234!",
+      });
     }
 
     const passwordHash = await bcrypt.hash("Demo1234!", 10);
-    const results: string[] = [];
-
-    for (const profile of PROFILES) {
-      await seedProfile(profile, passwordHash);
-      results.push(profile.email);
-    }
+    user = await User.create({
+      email: DEMO_EMAIL,
+      passwordHash,
+      firstName: "Demo",
+      lastName: "User",
+      province: "ON",
+      demoProfileIndex: DEFAULT_PROFILE_INDEX,
+    });
+    await seedDataForUser((user as any)._id, (PROFILES as any[])[DEFAULT_PROFILE_INDEX - 1]);
 
     return res.json({
       ok: true,
-      message: `${force ? "Force-reseeded" : "Seeded"} ${results.length} demo users (3 years of history)`,
-      emails: results,
+      message: `Created ${DEMO_EMAIL} with "The Young Professional" profile (3 years of history)`,
+      email: DEMO_EMAIL,
       password: "Demo1234!",
     });
   } catch (err: any) {

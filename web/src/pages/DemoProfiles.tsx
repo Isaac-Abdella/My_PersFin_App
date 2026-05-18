@@ -100,19 +100,20 @@ const PROFILES: Profile[] = [
   },
 ];
 
+const DEMO_EMAIL = "user_test@demo.com";
 const PASSWORD = "Demo1234!";
 
 export default function DemoProfiles() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState<number | null>(null); // profileIndex being activated
   const [statusMsg, setStatusMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const copyCredentials = (email: string) => {
-    navigator.clipboard.writeText(`Email: ${email}\nPassword: ${PASSWORD}`);
-    setCopied(email);
-    setTimeout(() => setCopied(null), 2000);
+  const copyCredentials = () => {
+    navigator.clipboard.writeText(`Email: ${DEMO_EMAIL}\nPassword: ${PASSWORD}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleActivate = async (profileIndex: number) => {
@@ -152,24 +153,37 @@ export default function DemoProfiles() {
           10 pre-seeded Canadian households — from a debt-laden graduate to a high-net-worth executive —
           each with 2 years of realistic transaction history. Log in to explore any profile.
         </p>
-        {!user && (
-          <div style={{
-            display: "inline-block", marginTop: 16,
-            background: "#eff6ff", border: "1px solid #bfdbfe",
-            borderRadius: 8, padding: "10px 20px", fontSize: "0.82rem", color: "#1d4ed8",
-          }}>
-            All pre-seeded accounts use password: <strong>{PASSWORD}</strong>
-          </div>
-        )}
+        {/* Single credential box */}
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 16, marginTop: 16, flexWrap: "wrap", justifyContent: "center",
+          background: "#1e293b", border: "1px solid #334155",
+          borderRadius: 10, padding: "12px 24px", fontSize: "0.85rem", color: "#e2e8f0",
+        }}>
+          <span>
+            <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block", marginBottom: 2 }}>EMAIL</span>
+            <strong style={{ fontFamily: "monospace", color: "#7dd3fc" }}>{DEMO_EMAIL}</strong>
+          </span>
+          <span style={{ color: "#475569" }}>·</span>
+          <span>
+            <span style={{ color: "#94a3b8", fontSize: "0.75rem", display: "block", marginBottom: 2 }}>PASSWORD</span>
+            <strong style={{ fontFamily: "monospace", color: "#86efac" }}>{PASSWORD}</strong>
+          </span>
+          <button
+            onClick={copyCredentials}
+            style={{
+              padding: "5px 14px", borderRadius: 6, border: "1px solid #475569",
+              background: "transparent", color: copied ? "#86efac" : "#94a3b8",
+              cursor: "pointer", fontSize: "0.78rem", fontWeight: 600,
+            }}
+          >
+            {copied ? "✓ Copied!" : "📋 Copy"}
+          </button>
+        </div>
         {user && (
-          <div style={{
-            display: "inline-block", marginTop: 16,
-            background: "#f0fdf4", border: "1px solid #86efac",
-            borderRadius: 8, padding: "10px 20px", fontSize: "0.82rem", color: "#166534",
-          }}>
-            Click <strong>Load this Profile</strong> on any card to populate your account with that financial profile's data.
-            Use <strong>Regenerate</strong> / <strong>Reset Data</strong> / <strong>Clear Data</strong> in the red header bar to manage it.
-          </div>
+          <p style={{ color: "var(--text-light, #6b7280)", fontSize: "0.8rem", marginTop: 10, marginBottom: 0 }}>
+            Click <strong>Load this Profile</strong> on any card below to populate your account with that profile's data.
+            Use the red <strong>DEMO ONLY</strong> bar in the header to Regenerate, Reset, or Clear.
+          </p>
         )}
       </div>
 
@@ -230,28 +244,8 @@ export default function DemoProfiles() {
               {p.highlights.map(h => <li key={h}>{h}</li>)}
             </ul>
 
-            {/* Credentials */}
-            <div style={{
-              background: "var(--bg, #f9fafb)", border: "1px solid var(--border, #e5e7eb)",
-              borderRadius: 8, padding: "8px 12px", fontFamily: "monospace", fontSize: "0.75rem",
-            }}>
-              <div style={{ color: "var(--text-light, #6b7280)", fontSize: "0.65rem", marginBottom: 3 }}>LOGIN CREDENTIALS</div>
-              <div><strong>Email:</strong> {p.email}</div>
-              <div><strong>Password:</strong> {PASSWORD}</div>
-            </div>
-
             {/* Actions */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                onClick={() => copyCredentials(p.email)}
-                style={{
-                  flex: 1, padding: "7px 0", borderRadius: 6, fontSize: "0.75rem",
-                  border: "1px solid var(--border, #e5e7eb)", background: "transparent",
-                  cursor: "pointer", color: "var(--text, #111)", minWidth: 110,
-                }}
-              >
-                {copied === p.email ? "✓ Copied!" : "📋 Copy Credentials"}
-              </button>
               {!user ? (
                 <button
                   onClick={() => navigate("/login")}
