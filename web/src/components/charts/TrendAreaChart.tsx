@@ -41,6 +41,7 @@ export default function TrendAreaChart({
   }
 
   return (
+    <div style={{ width: "100%", minWidth: 0 }}>
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
         <defs>
@@ -111,6 +112,7 @@ export default function TrendAreaChart({
         ))}
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 

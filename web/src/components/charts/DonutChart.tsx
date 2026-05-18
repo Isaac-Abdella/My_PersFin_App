@@ -52,7 +52,7 @@ export default function DonutChart({
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", minWidth: 0 }}>
       <ResponsiveContainer width="100%" height={height}>
         <PieChart>
           <Pie

@@ -200,6 +200,7 @@ export default function RetirementProjector() {
 
           <div className="rp-section-card">
             <h3>Portfolio Balance Projection</h3>
+            <div style={{ width: "100%", minWidth: 0 }}>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={result.points}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -211,6 +212,7 @@ export default function RetirementProjector() {
                 <Line dataKey="balance" name="Portfolio Balance" stroke="#4f46e5" strokeWidth={2.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </div>
 
           <div className="rp-section-card">
@@ -252,6 +254,7 @@ export default function RetirementProjector() {
                     </div>
                   ))}
                 </div>
+                <div style={{ width: "100%", minWidth: 0 }}>
                 <ResponsiveContainer width="100%" height={200}>
                   <ComposedChart data={mcResult.points}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -264,6 +267,7 @@ export default function RetirementProjector() {
                     <Line type="monotone" dataKey="p50" stroke="#4f46e5" strokeWidth={2} dot={false} name="Median (P50)" />
                   </ComposedChart>
                 </ResponsiveContainer>
+                </div>
                 <div className="mc-note">
                   Shaded band = P10–P90 outcome range. Assumes 6% mean / 12% std dev annual nominal return. Results vary each run.
                 </div>

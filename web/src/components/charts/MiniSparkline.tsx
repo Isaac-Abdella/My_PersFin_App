@@ -24,7 +24,8 @@ export default function MiniSparkline({
   const trend = last > first ? COLORS.income : last < first ? COLORS.expense : color;
 
   return (
-    <ResponsiveContainer width={width} height={height}>
+    <div style={{ width, minWidth: 0, flexShrink: 0 }}>
+    <ResponsiveContainer width="100%" height={height}>
       <LineChart data={chartData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
         <Tooltip
           content={({ active, payload }) =>
@@ -48,5 +49,6 @@ export default function MiniSparkline({
         />
       </LineChart>
     </ResponsiveContainer>
+    </div>
   );
 }

@@ -143,6 +143,7 @@ export default function NetWorth() {
         {assetData.length > 0 && (
           <div className="chart-card">
             <h3>Asset Breakdown</h3>
+            <div style={{ width: "100%", minWidth: 0 }}>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -162,12 +163,14 @@ export default function NetWorth() {
                 <Tooltip formatter={(value: any) => fmtMoney(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
+            </div>
           </div>
         )}
 
         {liabilityData.length > 0 && (
           <div className="chart-card">
             <h3>Liability Breakdown</h3>
+            <div style={{ width: "100%", minWidth: 0 }}>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -187,6 +190,7 @@ export default function NetWorth() {
                 <Tooltip formatter={(value: any) => fmtMoney(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
+            </div>
           </div>
         )}
       </div>
@@ -203,6 +207,7 @@ export default function NetWorth() {
               <option value={24}>Last 2 Years</option>
             </select>
           </div>
+          <div style={{ width: "100%", minWidth: 0 }}>
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -236,6 +241,7 @@ export default function NetWorth() {
               />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -251,6 +257,7 @@ export default function NetWorth() {
               <option value={30}>30 Years</option>
             </select>
           </div>
+          <div style={{ width: "100%", minWidth: 0 }}>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={scenarios}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -263,6 +270,7 @@ export default function NetWorth() {
               <Line type="monotone" dataKey="conservative" stroke="#F59E0B" strokeWidth={2} name="Conservative (3%)" dot={false} strokeDasharray="5 5" />
             </LineChart>
           </ResponsiveContainer>
+          </div>
           <p style={{ fontSize: "0.75rem", color: "var(--text-light)", marginTop: 8 }}>
             Assets grow at each scenario rate; liabilities amortize ~5%/yr. For planning purposes only.
           </p>

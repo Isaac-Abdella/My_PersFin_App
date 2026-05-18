@@ -267,6 +267,7 @@ export default function RRSPvsTFSA() {
               <p className="chart-subtitle">
                 At {pct(result.inputs.assumedAnnualReturn)} annual return, same out-of-pocket cost for both.
               </p>
+              <div style={{ width: "100%", minWidth: 0 }}>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={result.growthTable} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -278,6 +279,7 @@ export default function RRSPvsTFSA() {
                   <Bar dataKey="tfsaValue" name="TFSA" fill="#22c55e" />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             </div>
           )}
 

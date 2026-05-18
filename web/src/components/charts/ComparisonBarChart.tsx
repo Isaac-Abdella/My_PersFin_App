@@ -45,6 +45,7 @@ export default function ComparisonBarChart({
   const isVertical = layout === "vertical";
 
   return (
+    <div style={{ width: "100%", minWidth: 0 }}>
     <ResponsiveContainer width="100%" height={height}>
       <BarChart
         data={data}
@@ -137,6 +138,7 @@ export default function ComparisonBarChart({
         ))}
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 

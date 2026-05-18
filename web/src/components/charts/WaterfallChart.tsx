@@ -90,6 +90,7 @@ export default function WaterfallChart({
   };
 
   return (
+    <div style={{ width: "100%", minWidth: 0 }}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows} margin={{ top: 16, right: 16, bottom: 0, left: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
@@ -127,5 +128,6 @@ export default function WaterfallChart({
         </Bar>
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
   );
 }

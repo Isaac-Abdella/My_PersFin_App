@@ -189,6 +189,7 @@ export default function MLInsights() {
 
             {forecastCat && (
               <>
+                <div style={{ width: "100%", minWidth: 0 }}>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={buildChartData(forecastCat)} margin={{ top: 4, right: 12, bottom: 4, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -205,6 +206,7 @@ export default function MLInsights() {
                     <Line type="monotone" dataKey="forecast" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" dot={{ r: 3 }} name="Forecast" connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
+                </div>
                 <div className="ml-chart-note">
                   Dashed = forecasted months.&nbsp;
                   Trend:&nbsp;
