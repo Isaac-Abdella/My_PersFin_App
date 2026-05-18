@@ -38,8 +38,10 @@ const mongoose_1 = __importStar(require("mongoose"));
 const tfsaAccountSchema = new mongoose_1.Schema({
     userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
     accountName: { type: String, required: true },
+    institution: { type: String, default: "" },
     balance: { type: Number, default: 0 },
     currency: { type: String, default: "CAD" },
+    notes: { type: String, default: "" },
     contributions: [
         {
             year: Number,

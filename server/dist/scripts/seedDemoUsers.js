@@ -43,6 +43,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.PROFILES = void 0;
+exports.mulberry32 = mulberry32;
+exports.seedDataForUser = seedDataForUser;
 exports.seedProfile = seedProfile;
 const mongoose_1 = __importDefault(require("mongoose"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
@@ -56,19 +59,32 @@ const Budget_1 = require("../models/Budget");
 const Bill_1 = require("../models/Bill");
 const Goal_1 = require("../models/Goal");
 const NetWorthSnapshot_1 = require("../models/NetWorthSnapshot");
+// ── Seeded PRNG (Mulberry32) ──────────────────────────────────────────────────
+function mulberry32(seed) {
+    return function () {
+        seed |= 0;
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const NOW = new Date();
+// _rng and _now are set by seedProfile before each run so that "Reset" can use
+// a deterministic seed (same data every time) while "Regenerate" uses Math.random.
+let _rng = Math.random;
+let _now = new Date();
 function rnd(min, max) {
-    return parseFloat((Math.random() * (max - min) + min).toFixed(2));
+    return parseFloat((_rng() * (max - min) + min).toFixed(2));
 }
 function rndInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    return Math.floor(_rng() * (max - min + 1)) + min;
 }
 function pick(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
+    return arr[Math.floor(_rng() * arr.length)];
 }
 function txnDate(monthsAgo, day) {
-    const d = new Date(NOW);
+    const d = new Date(_now);
     d.setDate(1);
     d.setHours(rndInt(8, 20), rndInt(0, 59), 0, 0);
     d.setMonth(d.getMonth() - monthsAgo);
@@ -78,12 +94,12 @@ function txnDate(monthsAgo, day) {
 }
 /** Returns all bi-weekly pay dates going back `months` months. */
 function payDates(months) {
-    const anchor = new Date(NOW);
+    const anchor = new Date(_now);
     anchor.setMonth(anchor.getMonth() - months);
     anchor.setDate(1);
     const dates = [];
     const cur = new Date(anchor);
-    while (cur <= NOW) {
+    while (cur <= _now) {
         dates.push(new Date(cur));
         cur.setDate(cur.getDate() + 14);
     }
@@ -98,7 +114,7 @@ const STREAMING = ["Netflix", "Crave TV", "Disney+", "Amazon Prime Video", "Spot
 const PHARMACIES = ["Shoppers Drug Mart", "Rexall", "Jean Coutu", "Pharmaprix"];
 const CLOTHING = ["Winners", "H&M Canada", "Roots", "Banana Republic", "Reitmans", "Simons", "Hudson's Bay"];
 // ── 10 Profiles ───────────────────────────────────────────────────────────────
-const PROFILES = [
+exports.PROFILES = [
     // ── 1. The Overwhelmed Graduate ─────────────────────────────────────────────
     {
         email: "user_test1@demo.com",
@@ -623,7 +639,7 @@ function buildTransactions(userId, acctMap, profile) {
             return;
         txns.push({ userId, accountId, type, amount: parseFloat(amount.toFixed(2)), category, description, date, source: "manual" });
     };
-    // ── Opening balances (24 months ago) ──────────────────────────────────────────
+    // ── Opening balances (36 months ago) ──────────────────────────────────────────
     for (const acct of profile.accounts) {
         if (acct.openingBalance <= 0)
             continue;
@@ -638,18 +654,18 @@ function buildTransactions(userId, acctMap, profile) {
             amount: acct.openingBalance,
             category: isLiability ? "Opening Balance (Debt)" : "Opening Balance",
             description: `Opening Balance — ${acct.name}`,
-            date: txnDate(24, 1),
+            date: txnDate(36, 1),
             source: "manual",
         });
     }
-    // ── Pay dates over 24 months ──────────────────────────────────────────────────
-    const pays = payDates(24);
+    // ── Pay dates over 36 months ──────────────────────────────────────────────────
+    const pays = payDates(36);
     for (const date of pays) {
         add("income", rnd(profile.netPayBiweekly * 0.96, profile.netPayBiweekly * 1.04), "Employment Income", profile.payDesc, date, profile.payAccountKey);
     }
     // ── GST/HST Credit (quarterly — Jan, Apr, Jul, Oct) ──────────────────────────
-    for (let m = 23; m >= 0; m--) {
-        const base = new Date(NOW);
+    for (let m = 35; m >= 0; m--) {
+        const base = new Date(_now);
         base.setDate(1);
         base.setMonth(base.getMonth() - m);
         if ([0, 3, 6, 9].includes(base.getMonth())) {
@@ -661,7 +677,7 @@ function buildTransactions(userId, acctMap, profile) {
         }
     }
     // ── Monthly spending rules ────────────────────────────────────────────────────
-    for (let m = 23; m >= 0; m--) {
+    for (let m = 35; m >= 0; m--) {
         for (const rule of profile.spending) {
             const count = Math.round(rule.perMonth + rnd(-0.5, 0.5));
             for (let i = 0; i < count; i++) {
@@ -728,10 +744,10 @@ function buildSnapshots(userId, profile) {
         else
             baseAssets += acct.openingBalance;
     }
-    // Generate quarterly snapshots over 2 years
-    for (let m = 24; m >= 0; m -= 3) {
-        const growthFactor = 1 + (0.005 * (24 - m)); // slight growth over time
-        const paydownFactor = 1 - (0.01 * (24 - m)); // liabilities decrease over time
+    // Generate quarterly snapshots over 3 years
+    for (let m = 36; m >= 0; m -= 3) {
+        const growthFactor = 1 + (0.005 * (36 - m)); // slight growth over time
+        const paydownFactor = 1 - (0.01 * (36 - m)); // liabilities decrease over time
         const totalAssets = Math.round(baseAssets * growthFactor);
         const totalLiabilities = Math.max(0, Math.round(baseLiabilities * paydownFactor));
         const netWorth = totalAssets - totalLiabilities;
@@ -766,8 +782,52 @@ function buildSnapshots(userId, profile) {
     }
     return snapshots;
 }
+// ── Data-only seeder (for an EXISTING user — no User doc created) ─────────────
+async function seedDataForUser(userId, profile, opts) {
+    _rng = opts?.rng ?? Math.random;
+    _now = opts?.baseDate ?? new Date();
+    const acctMap = new Map();
+    for (const def of profile.accounts) {
+        const acct = await Account_1.Account.create({
+            userId, name: def.name, type: def.type,
+            institution: def.institution, balance: 0, currency: "CAD",
+        });
+        acctMap.set(def.key, acct._id);
+    }
+    const txns = buildTransactions(userId, acctMap, profile);
+    await Transaction_1.Transaction.insertMany(txns);
+    const now = new Date();
+    for (const b of profile.budgets) {
+        await Budget_1.Budget.create({
+            userId, category: b.category, amount: b.amount,
+            period: "monthly", isActive: true,
+            startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+        });
+    }
+    for (const b of profile.bills) {
+        await Bill_1.Bill.create({
+            userId, name: b.name, category: b.category,
+            amount: b.amount, frequency: "monthly",
+            dueDate: b.dueDate, status: "active", isAutoPay: true,
+        });
+    }
+    for (const g of profile.goals) {
+        const targetDate = new Date();
+        targetDate.setMonth(targetDate.getMonth() + g.months);
+        await Goal_1.Goal.create({
+            userId, name: g.name, category: g.category,
+            targetAmount: g.target, currentAmount: g.current,
+            targetDate, priority: g.priority || "medium", status: "active",
+        });
+    }
+    const snapshots = buildSnapshots(userId, profile);
+    await NetWorthSnapshot_1.NetWorthSnapshot.insertMany(snapshots);
+}
 // ── Seeder for a single profile ───────────────────────────────────────────────
-async function seedProfile(profile, passwordHash) {
+async function seedProfile(profile, passwordHash, opts) {
+    // Apply PRNG and base date for this run (module-level so helpers can use them)
+    _rng = opts?.rng ?? Math.random;
+    _now = opts?.baseDate ?? new Date();
     const existing = await User_1.User.findOne({ email: profile.email });
     if (existing) {
         console.log(`  ⏭  ${profile.email} already exists — skipping`);
@@ -827,25 +887,38 @@ async function seedProfile(profile, passwordHash) {
     console.log(`  ✓  ${profile.email} — ${txns.length} transactions, ${profile.accounts.length} accounts`);
 }
 // ── Main ──────────────────────────────────────────────────────────────────────
+const DEMO_EMAIL = "user_test@demo.com";
+const DEFAULT_PROFILE_INDEX = 4; // The Young Professional — good neutral starter
 async function main() {
     await mongoose_1.default.connect(process.env.MONGO_URI || "mongodb://localhost:27017/persfin");
     console.log("Connected to MongoDB\n");
-    // Migrate the Transaction plaidTransactionId index from sparse to partialFilterExpression.
-    // The old sparse compound index is ineffective when userId is always present.
     try {
         await Transaction_1.Transaction.collection.dropIndex("userId_1_plaidTransactionId_1");
-        console.log("Dropped old sparse plaidTransactionId index.");
     }
     catch { /* index may not exist yet */ }
     await Transaction_1.Transaction.collection.createIndex({ userId: 1, plaidTransactionId: 1 }, { unique: true, partialFilterExpression: { plaidTransactionId: { $type: "string" } } });
-    console.log("Created partial-filter plaidTransactionId index.\n");
-    const passwordHash = await bcryptjs_1.default.hash("Demo1234!", 10);
-    console.log("Seeding 10 demo profiles...\n");
-    for (const profile of PROFILES) {
-        await seedProfile(profile, passwordHash);
+    const existing = await User_1.User.findOne({ email: DEMO_EMAIL });
+    if (existing) {
+        console.log(`${DEMO_EMAIL} already exists — skipping. Run clearDemoUsers first to recreate.`);
     }
-    console.log(`\nDone! All 10 demo users seeded.`);
-    console.log(`Password for all accounts: Demo1234!`);
-    console.log(`Emails: user_test1@demo.com ... user_test10@demo.com`);
+    else {
+        const passwordHash = await bcryptjs_1.default.hash("Demo1234!", 10);
+        const user = await User_1.User.create({
+            email: DEMO_EMAIL,
+            passwordHash,
+            firstName: "Demo",
+            lastName: "User",
+            province: "ON",
+            demoProfileIndex: DEFAULT_PROFILE_INDEX,
+        });
+        await seedDataForUser(user._id, exports.PROFILES[DEFAULT_PROFILE_INDEX - 1]);
+        console.log(`✓  ${DEMO_EMAIL} created with "${exports.PROFILES[DEFAULT_PROFILE_INDEX - 1].firstName}'s" profile (3 years of history)`);
+    }
+    console.log(`\nDone!`);
+    console.log(`Email:    ${DEMO_EMAIL}`);
+    console.log(`Password: Demo1234!`);
 }
-main().catch(console.error).finally(() => mongoose_1.default.disconnect());
+// Only run when executed directly (not when imported as a module)
+if (require.main === module) {
+    main().catch(console.error).finally(() => mongoose_1.default.disconnect());
+}

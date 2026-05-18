@@ -51,7 +51,12 @@ const Budget_1 = require("../models/Budget");
 const Bill_1 = require("../models/Bill");
 const Goal_1 = require("../models/Goal");
 const NetWorthSnapshot_1 = require("../models/NetWorthSnapshot");
-const DEMO_EMAILS = Array.from({ length: 10 }, (_, i) => `user_test${i + 1}@demo.com`);
+const DemoSnapshot_1 = require("../models/DemoSnapshot");
+const DEMO_EMAILS = [
+    "user_test@demo.com",
+    // Legacy accounts — safe to clear if they still exist in the DB
+    ...Array.from({ length: 10 }, (_, i) => `user_test${i + 1}@demo.com`),
+];
 async function main() {
     await mongoose_1.default.connect(process.env.MONGO_URI || "mongodb://localhost:27017/persfin");
     console.log("Connected\n");
@@ -70,6 +75,7 @@ async function main() {
             Goal_1.Goal.deleteMany({ userId: uid }),
             NetWorthSnapshot_1.NetWorthSnapshot.deleteMany({ userId: uid }),
         ]);
+        await DemoSnapshot_1.DemoSnapshot.deleteOne({ userId: uid });
         await User_1.User.deleteOne({ _id: uid });
         console.log(`  ✓  ${email} removed — ${txns.deletedCount} txns, ${accts.deletedCount} accounts, ${budgets.deletedCount} budgets, ${bills.deletedCount} bills, ${goals.deletedCount} goals, ${snapshots.deletedCount} snapshots`);
     }

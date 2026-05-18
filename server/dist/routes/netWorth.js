@@ -8,9 +8,65 @@ const Property_1 = require("../models/Property");
 const requireLogin_1 = require("../middleware/requireLogin");
 const router = (0, express_1.Router)();
 router.use(requireLogin_1.requireLogin);
+// Account types that represent liabilities, not assets.
+// Must stay in sync with the same constant in analytics.ts and Accounts.tsx.
+const LIABILITY_TYPES = new Set([
+    'credit-card', 'line-of-credit', 'mortgage',
+    'auto-loan', 'personal-loan', 'student-loan',
+]);
+const ASSET_CASH_TYPES = new Set(['chequing', 'checking', 'savings']);
+const ASSET_INVEST_TYPES = new Set(['investment', 'tfsa', 'rrsp', 'gic']);
+/**
+ * Shared helper — computes totals and breakdown from the three data sources.
+ * Single source of truth used by both /current and /snapshot.
+ */
+function calcNetWorth(accounts, debts, properties) {
+    const realEstate = properties.reduce((s, p) => s + p.currentEstimatedValue, 0);
+    // Assets = non-liability accounts + real estate
+    const assetAccounts = accounts.filter(a => !LIABILITY_TYPES.has(a.type));
+    const liabAccounts = accounts.filter(a => LIABILITY_TYPES.has(a.type));
+    const accountAssets = assetAccounts.reduce((s, a) => s + a.balance, 0);
+    const totalAssets = accountAssets + realEstate;
+    // Liabilities = Debt-model entries + liability-type account balances (CC, LOC, etc.)
+    const debtTotal = debts.reduce((s, d) => s + d.currentBalance, 0);
+    const acctLiabTotal = liabAccounts.reduce((s, a) => s + a.balance, 0);
+    const totalLiabilities = debtTotal + acctLiabTotal;
+    const netWorth = totalAssets - totalLiabilities;
+    const breakdown = {
+        assets: {
+            cash: assetAccounts
+                .filter(a => ASSET_CASH_TYPES.has(a.type))
+                .reduce((s, a) => s + a.balance, 0),
+            investments: assetAccounts
+                .filter(a => ASSET_INVEST_TYPES.has(a.type))
+                .reduce((s, a) => s + a.balance, 0),
+            realEstate,
+            otherAssets: assetAccounts
+                .filter(a => !ASSET_CASH_TYPES.has(a.type) && !ASSET_INVEST_TYPES.has(a.type))
+                .reduce((s, a) => s + a.balance, 0),
+        },
+        liabilities: {
+            mortgages: debts
+                .filter(d => d.type === 'mortgage')
+                .reduce((s, d) => s + d.currentBalance, 0),
+            creditCard: liabAccounts
+                .filter(a => a.type === 'credit-card')
+                .reduce((s, a) => s + a.balance, 0),
+            lineOfCredit: liabAccounts
+                .filter(a => a.type === 'line-of-credit')
+                .reduce((s, a) => s + a.balance, 0),
+            loans: debts
+                .filter(d => ['personal-loan', 'auto-loan', 'student-loan'].includes(d.type))
+                .reduce((s, d) => s + d.currentBalance, 0),
+            otherLiabilities: liabAccounts
+                .filter(a => !['credit-card', 'line-of-credit'].includes(a.type))
+                .reduce((s, a) => s + a.balance, 0),
+        },
+    };
+    return { totalAssets, totalLiabilities, netWorth, breakdown };
+}
 /**
  * GET /net-worth/current
- * Get current net worth with breakdown
  */
 router.get('/current', async (req, res, next) => {
     try {
@@ -20,26 +76,7 @@ router.get('/current', async (req, res, next) => {
             Debt_1.Debt.find({ userId }),
             Property_1.Property.find({ userId }),
         ]);
-        const realEstateTotal = properties.reduce((sum, p) => sum + p.currentEstimatedValue, 0);
-        const accountAssets = accounts.reduce((sum, acc) => sum + Math.max(0, acc.balance), 0);
-        const totalAssets = accountAssets + realEstateTotal;
-        const totalLiabilities = debts.reduce((sum, debt) => sum + debt.currentBalance, 0);
-        const netWorth = totalAssets - totalLiabilities;
-        const breakdown = {
-            assets: {
-                cash: accounts.filter(a => a.type === 'chequing' || a.type === 'savings').reduce((sum, a) => sum + a.balance, 0),
-                investments: accounts.filter(a => a.type === 'investment' || a.type === 'tfsa' || a.type === 'rrsp').reduce((sum, a) => sum + a.balance, 0),
-                realEstate: realEstateTotal,
-                otherAssets: accounts.filter(a => !['chequing', 'savings', 'investment', 'tfsa', 'rrsp'].includes(a.type)).reduce((sum, a) => sum + Math.max(0, a.balance), 0),
-            },
-            liabilities: {
-                mortgages: debts.filter(d => d.type === 'mortgage').reduce((sum, d) => sum + d.currentBalance, 0),
-                creditCard: accounts.filter(a => a.type === 'credit-card').reduce((sum, a) => sum + Math.abs(Math.min(0, a.balance)), 0),
-                loans: debts.filter(d => ['personal-loan', 'auto-loan', 'student-loan'].includes(d.type)).reduce((sum, d) => sum + d.currentBalance, 0),
-                otherLiabilities: 0,
-            },
-        };
-        res.json({ totalAssets, totalLiabilities, netWorth, breakdown });
+        res.json(calcNetWorth(accounts, debts, properties));
     }
     catch (err) {
         next(err);
@@ -47,7 +84,6 @@ router.get('/current', async (req, res, next) => {
 });
 /**
  * POST /net-worth/snapshot
- * Create a net worth snapshot
  */
 router.post('/snapshot', async (req, res, next) => {
     try {
@@ -57,25 +93,7 @@ router.post('/snapshot', async (req, res, next) => {
             Debt_1.Debt.find({ userId }),
             Property_1.Property.find({ userId }),
         ]);
-        const realEstateTotal = properties.reduce((sum, p) => sum + p.currentEstimatedValue, 0);
-        const accountAssets = accounts.reduce((sum, acc) => sum + Math.max(0, acc.balance), 0);
-        const totalAssets = accountAssets + realEstateTotal;
-        const totalLiabilities = debts.reduce((sum, debt) => sum + debt.currentBalance, 0);
-        const netWorth = totalAssets - totalLiabilities;
-        const breakdown = {
-            assets: {
-                cash: accounts.filter(a => a.type === 'chequing' || a.type === 'savings').reduce((sum, a) => sum + a.balance, 0),
-                investments: accounts.filter(a => a.type === 'investment' || a.type === 'tfsa' || a.type === 'rrsp').reduce((sum, a) => sum + a.balance, 0),
-                realEstate: realEstateTotal,
-                otherAssets: accounts.filter(a => !['chequing', 'savings', 'investment', 'tfsa', 'rrsp'].includes(a.type)).reduce((sum, a) => sum + Math.max(0, a.balance), 0),
-            },
-            liabilities: {
-                mortgages: debts.filter(d => d.type === 'mortgage').reduce((sum, d) => sum + d.currentBalance, 0),
-                creditCard: accounts.filter(a => a.type === 'credit-card').reduce((sum, a) => sum + Math.abs(Math.min(0, a.balance)), 0),
-                loans: debts.filter(d => ['personal-loan', 'auto-loan', 'student-loan'].includes(d.type)).reduce((sum, d) => sum + d.currentBalance, 0),
-                otherLiabilities: 0,
-            },
-        };
+        const { totalAssets, totalLiabilities, netWorth, breakdown } = calcNetWorth(accounts, debts, properties);
         const snapshot = await NetWorthSnapshot_1.NetWorthSnapshot.create({
             userId,
             totalAssets,
@@ -92,7 +110,6 @@ router.post('/snapshot', async (req, res, next) => {
 });
 /**
  * GET /net-worth/history
- * Get net worth history
  */
 router.get('/history', async (req, res, next) => {
     try {

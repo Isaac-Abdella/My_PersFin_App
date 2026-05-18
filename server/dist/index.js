@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const express_session_1 = __importDefault(require("express-session"));
+const path_1 = __importDefault(require("path"));
 const connect_mongo_1 = __importDefault(require("connect-mongo"));
 const passport_1 = __importDefault(require("passport"));
 const mongoose_1 = __importDefault(require("mongoose"));
@@ -38,26 +39,56 @@ const recurring_1 = __importDefault(require("./routes/recurring"));
 const plaid_1 = __importDefault(require("./routes/plaid"));
 const ml_1 = __importDefault(require("./routes/ml"));
 const demo_1 = __importDefault(require("./routes/demo"));
+const setup_1 = __importDefault(require("./routes/setup"));
+const fhsa_1 = __importDefault(require("./routes/fhsa"));
+const resp_1 = __importDefault(require("./routes/resp"));
+const tfsa_1 = __importDefault(require("./routes/tfsa"));
+const rrsp_1 = __importDefault(require("./routes/rrsp"));
 const scheduler_1 = require("./jobs/scheduler");
 const app = (0, express_1.default)();
+const isProd = process.env.NODE_ENV === "production";
+// Render terminates TLS at the load balancer — trust proxy so cookies are secure
+if (isProd)
+    app.set("trust proxy", 1);
+// ── 1. Static files served FIRST — no session/auth needed for assets ──────────
+// __dirname at runtime = server/dist, so ../../web/dist = repo-root/web/dist
+const frontendDist = path_1.default.join(__dirname, "../../web/dist");
+if (isProd) {
+    app.use(express_1.default.static(frontendDist));
+}
+// ── 2. CORS ───────────────────────────────────────────────────────────────────
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+    // Render injects RENDER_EXTERNAL_URL automatically — allows the app's own origin
+    ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
+];
 app.use((0, cors_1.default)({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: (origin, cb) => {
+        // Allow server-to-server / Render health checks (no Origin) and listed origins
+        if (!origin || allowedOrigins.includes(origin))
+            cb(null, true);
+        else
+            cb(new Error(`CORS: ${origin} not allowed`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
 }));
-// Request logging middleware
+// ── 3. Request logging ────────────────────────────────────────────────────────
 app.use((req, _res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     next();
 });
-app.use(express_1.default.json({ limit: '50mb' }));
-const SESSION_TTL_SEC = 7 * 24 * 60 * 60; // 7 days, matches cookie maxAge
+app.use(express_1.default.json({ limit: "50mb" }));
+// ── 4. Session + Passport (API routes only need these) ───────────────────────
+const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
 const store = new connect_mongo_1.default({
     mongoUrl: config_1.MONGO_URI,
     ttl: SESSION_TTL_SEC,
-    touchAfter: 24 * 3600 // only update the TTL once per day unless data changes
+    touchAfter: 24 * 3600,
 });
 store.on("error", (err) => {
     console.error("Session store error:", err);
@@ -66,16 +97,17 @@ app.use((0, express_session_1.default)({
     secret: config_1.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: store,
+    store,
     cookie: {
-        secure: false, // set true + trust proxy in production with HTTPS
+        secure: isProd,
         httpOnly: true,
-        sameSite: 'lax',
-        maxAge: SESSION_TTL_SEC * 1000
-    }
+        sameSite: "lax",
+        maxAge: SESSION_TTL_SEC * 1000,
+    },
 }));
 app.use(passport_1.default.initialize());
 app.use(passport_1.default.session());
+// ── 5. API routes ─────────────────────────────────────────────────────────────
 app.use("/api/auth", auth_1.default);
 app.use("/api/accounts", accounts_1.default);
 app.use("/api/account-types", accountTypes_1.default);
@@ -103,7 +135,18 @@ app.use("/api/recurring", recurring_1.default);
 app.use("/api/plaid", plaid_1.default);
 app.use("/api/ml", ml_1.default);
 app.use("/api/demo", demo_1.default);
-// Error handler
+app.use("/api/setup", setup_1.default);
+app.use("/api/fhsa", fhsa_1.default);
+app.use("/api/resp", resp_1.default);
+app.use("/api/tfsa-tracker", tfsa_1.default);
+app.use("/api/rrsp-tracker", rrsp_1.default);
+// ── 6. SPA fallback — must come before error handler ─────────────────────────
+if (isProd) {
+    app.get("/{*splat}", (_req, res) => {
+        res.sendFile(path_1.default.join(frontendDist, "index.html"));
+    });
+}
+// ── 7. Error handler — must be last ──────────────────────────────────────────
 app.use((err, _req, res, _next) => {
     console.error("Error:", err);
     res.status(err.status || 500).json({ message: err.message });

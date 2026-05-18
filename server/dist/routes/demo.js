@@ -1,8 +1,11 @@
 "use strict";
 /**
- * Demo management routes.
- * POST /api/demo/reset  — clears and re-seeds data for the current demo user.
- * POST /api/demo/clear  — wipes all data for the current demo user (leaves account blank).
+ * Demo / simulation data routes — available to ANY logged-in user.
+ *
+ * POST /api/demo/activate   — load a financial profile template into the current user's account
+ * POST /api/demo/regenerate — fresh random data for the same profile (saves a new snapshot)
+ * POST /api/demo/reset      — restore data to the last snapshot (undo edits since last Regenerate)
+ * POST /api/demo/clear      — wipe all data and remove the demo profile link
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -37,12 +40,8 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const requireLogin_1 = require("../middleware/requireLogin");
 const User_1 = require("../models/User");
 const Account_1 = require("../models/Account");
@@ -51,75 +50,134 @@ const Budget_1 = require("../models/Budget");
 const Bill_1 = require("../models/Bill");
 const Goal_1 = require("../models/Goal");
 const NetWorthSnapshot_1 = require("../models/NetWorthSnapshot");
+const DemoSnapshot_1 = require("../models/DemoSnapshot");
 const router = (0, express_1.Router)();
 router.use(requireLogin_1.requireAuth);
-const DEMO_DOMAIN = "@demo.com";
-function isDemoUser(email) {
-    return email.endsWith(DEMO_DOMAIN) && /^user_test\d+@demo\.com$/.test(email);
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 async function clearUserData(userId) {
-    const userIdStr = userId.toString();
+    const s = userId.toString();
     await Promise.all([
-        Transaction_1.Transaction.deleteMany({ userId: userIdStr }),
-        Account_1.Account.deleteMany({ userId: userIdStr }),
-        Budget_1.Budget.deleteMany({ userId: userIdStr }),
-        Bill_1.Bill.deleteMany({ userId: userIdStr }),
-        Goal_1.Goal.deleteMany({ userId: userIdStr }),
-        NetWorthSnapshot_1.NetWorthSnapshot.deleteMany({ userId: userIdStr }),
+        Transaction_1.Transaction.deleteMany({ userId: s }),
+        Account_1.Account.deleteMany({ userId: s }),
+        Budget_1.Budget.deleteMany({ userId: s }),
+        Bill_1.Bill.deleteMany({ userId: s }),
+        Goal_1.Goal.deleteMany({ userId: s }),
+        NetWorthSnapshot_1.NetWorthSnapshot.deleteMany({ userId: s }),
     ]);
 }
-// POST /api/demo/clear — wipe everything (leave account blank for manual entry)
-router.post("/clear", async (req, res) => {
-    const email = req.user.email;
-    if (!isDemoUser(email)) {
-        return res.status(403).json({ message: "Only demo accounts can use this endpoint." });
+async function takeSnapshot(userId, profileIndex) {
+    const s = userId.toString();
+    const [accounts, transactions, budgets, bills, goals, netWorthSnapshots] = await Promise.all([
+        Account_1.Account.find({ userId: s }).lean(),
+        Transaction_1.Transaction.find({ userId: s }).lean(),
+        Budget_1.Budget.find({ userId: s }).lean(),
+        Bill_1.Bill.find({ userId: s }).lean(),
+        Goal_1.Goal.find({ userId: s }).lean(),
+        NetWorthSnapshot_1.NetWorthSnapshot.find({ userId: s }).lean(),
+    ]);
+    await DemoSnapshot_1.DemoSnapshot.findOneAndUpdate({ userId }, { userId, profileIndex, savedAt: new Date(), accounts, transactions, budgets, bills, goals, netWorthSnapshots }, { upsert: true, new: true });
+}
+async function restoreFromSnapshot(userId) {
+    const snap = await DemoSnapshot_1.DemoSnapshot.findOne({ userId }).lean();
+    if (!snap)
+        return false;
+    const s = userId.toString();
+    await Promise.all([
+        Transaction_1.Transaction.deleteMany({ userId: s }),
+        Account_1.Account.deleteMany({ userId: s }),
+        Budget_1.Budget.deleteMany({ userId: s }),
+        Bill_1.Bill.deleteMany({ userId: s }),
+        Goal_1.Goal.deleteMany({ userId: s }),
+        NetWorthSnapshot_1.NetWorthSnapshot.deleteMany({ userId: s }),
+    ]);
+    if (snap.accounts.length)
+        await Account_1.Account.collection.insertMany(snap.accounts);
+    if (snap.transactions.length)
+        await Transaction_1.Transaction.collection.insertMany(snap.transactions);
+    if (snap.budgets.length)
+        await Budget_1.Budget.collection.insertMany(snap.budgets);
+    if (snap.bills.length)
+        await Bill_1.Bill.collection.insertMany(snap.bills);
+    if (snap.goals.length)
+        await Goal_1.Goal.collection.insertMany(snap.goals);
+    if (snap.netWorthSnapshots.length)
+        await NetWorthSnapshot_1.NetWorthSnapshot.collection.insertMany(snap.netWorthSnapshots);
+    return true;
+}
+// ── POST /api/demo/activate ───────────────────────────────────────────────────
+// Body: { profileIndex: number }  (1–10)
+// Loads a financial profile template for the current user and saves a snapshot.
+router.post("/activate", async (req, res) => {
+    const userId = req.user._id;
+    const profileIndex = parseInt(req.body.profileIndex, 10);
+    if (!profileIndex || profileIndex < 1 || profileIndex > 10) {
+        return res.status(400).json({ message: "profileIndex must be 1–10" });
     }
-    const userId = req.user.id;
-    await clearUserData(userId);
-    return res.json({ message: "All data cleared. You can now add your own data or reset from a profile." });
-});
-// POST /api/demo/reset — clear and re-seed from original profile data
-router.post("/reset", async (req, res) => {
-    const email = req.user.email;
-    if (!isDemoUser(email)) {
-        return res.status(403).json({ message: "Only demo accounts can use this endpoint." });
-    }
-    const userId = req.user.id;
     try {
+        const { seedDataForUser, PROFILES } = await Promise.resolve().then(() => __importStar(require("../scripts/seedDemoUsers")));
+        const profile = PROFILES[profileIndex - 1];
         await clearUserData(userId);
-        // Dynamically import the seeder so we don't pull all that data in at startup
-        const { seedProfile } = await Promise.resolve().then(() => __importStar(require("../scripts/seedDemoUsers")));
-        const { PROFILES } = await Promise.resolve().then(() => __importStar(require("../scripts/seedDemoUsers")));
-        // Find which profile index this user maps to
-        const match = PROFILES.find((p) => p.email === email);
-        if (!match)
-            return res.status(404).json({ message: "Profile not found." });
-        const passwordHash = await bcryptjs_1.default.hash("Demo1234!", 10);
-        // Temporarily remove user so seedProfile can recreate their data,
-        // then restore the existing user record.
-        await seedProfile(match, passwordHash);
-        // seedProfile creates a new user — merge their data onto existing user
-        const seedUser = await User_1.User.findOne({ email, _id: { $ne: userId } });
-        if (seedUser) {
-            // Move all seeded documents from the new userId to the original
-            const newUid = seedUser._id;
-            const newUidStr = newUid.toString();
-            const userIdStr = userId.toString();
-            await Promise.all([
-                Account_1.Account.updateMany({ userId: newUidStr }, { userId: userIdStr }),
-                Transaction_1.Transaction.updateMany({ userId: newUidStr }, { userId: userIdStr }),
-                Budget_1.Budget.updateMany({ userId: newUidStr }, { userId: userIdStr }),
-                Bill_1.Bill.updateMany({ userId: newUidStr }, { userId: userIdStr }),
-                Goal_1.Goal.updateMany({ userId: newUidStr }, { userId: userIdStr }),
-                NetWorthSnapshot_1.NetWorthSnapshot.updateMany({ userId: newUidStr }, { userId: userIdStr }),
-            ]);
-            await User_1.User.deleteOne({ _id: newUid });
+        await seedDataForUser(userId, profile);
+        await takeSnapshot(userId, profileIndex);
+        await User_1.User.findByIdAndUpdate(userId, { demoProfileIndex: profileIndex });
+        return res.json({ ok: true, message: `Profile "${profile.firstName}'s" data loaded. Reload to see it.`, profileIndex });
+    }
+    catch (err) {
+        console.error("Demo activate error:", err);
+        return res.status(500).json({ message: err.message || "Activate failed." });
+    }
+});
+// ── POST /api/demo/regenerate ─────────────────────────────────────────────────
+// Wipes current data and re-seeds with fresh random values (same profile type).
+// Saves a new snapshot so Reset will restore to THIS new dataset.
+router.post("/regenerate", async (req, res) => {
+    const userId = req.user._id;
+    const user = await User_1.User.findById(userId);
+    if (!user?.demoProfileIndex) {
+        return res.status(400).json({ message: "No demo profile loaded. Go to Demo Profiles and load one first." });
+    }
+    try {
+        const { seedDataForUser, PROFILES } = await Promise.resolve().then(() => __importStar(require("../scripts/seedDemoUsers")));
+        const profile = PROFILES[user.demoProfileIndex - 1];
+        await clearUserData(userId);
+        await seedDataForUser(userId, profile); // Math.random + current date (defaults)
+        await takeSnapshot(userId, user.demoProfileIndex);
+        return res.json({ ok: true, message: "New random dataset generated. Reload to see your fresh data." });
+    }
+    catch (err) {
+        console.error("Demo regenerate error:", err);
+        return res.status(500).json({ message: err.message || "Regenerate failed." });
+    }
+});
+// ── POST /api/demo/reset ──────────────────────────────────────────────────────
+// Restores data to the last snapshot — undoes any edits made since the last Regenerate.
+router.post("/reset", async (req, res) => {
+    const userId = req.user._id;
+    try {
+        const restored = await restoreFromSnapshot(userId);
+        if (!restored) {
+            return res.status(404).json({ message: "No snapshot found. Regenerate first to create one." });
         }
-        return res.json({ message: "Data reset successfully. Reload the app to see your fresh profile." });
+        return res.json({ ok: true, message: "Data restored to your last Regenerated state. Reload to see it." });
     }
     catch (err) {
         console.error("Demo reset error:", err);
         return res.status(500).json({ message: err.message || "Reset failed." });
+    }
+});
+// ── POST /api/demo/clear ──────────────────────────────────────────────────────
+// Deletes all data, removes the snapshot, and unlinks the demo profile.
+router.post("/clear", async (req, res) => {
+    const userId = req.user._id;
+    try {
+        await clearUserData(userId);
+        await DemoSnapshot_1.DemoSnapshot.deleteOne({ userId });
+        await User_1.User.findByIdAndUpdate(userId, { demoProfileIndex: null });
+        return res.json({ ok: true, message: "All data cleared. Your account is now blank." });
+    }
+    catch (err) {
+        console.error("Demo clear error:", err);
+        return res.status(500).json({ message: err.message || "Clear failed." });
     }
 });
 exports.default = router;

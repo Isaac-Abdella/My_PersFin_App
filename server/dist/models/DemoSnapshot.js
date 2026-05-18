@@ -33,43 +33,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RRSPAccount = void 0;
+exports.DemoSnapshot = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const rrspAccountSchema = new mongoose_1.Schema({
-    userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
-    accountName: { type: String, required: true },
-    institution: { type: String, default: "" },
-    balance: { type: Number, default: 0 },
-    currency: { type: String, default: "CAD" },
-    notes: { type: String, default: "" },
-    contributions: [
-        {
-            year: Number,
-            amount: Number,
-            date: { type: Date, default: Date.now },
-        },
-    ],
-    withdrawals: [
-        {
-            year: Number,
-            amount: Number,
-            date: { type: Date, default: Date.now },
-            withholding: Number,
-        },
-    ],
-    lifetimeContributionRoom: { type: Number, default: 0 },
-    deductionLimit: { type: Number, default: 0 },
-    annualContributionLimit: { type: Number, default: 31560 }, // 2024 limit
-    currentYearUsed: { type: Number, default: 0 },
-    isAccountOwner: { type: Boolean, default: true },
-    spousalAccountId: mongoose_1.Schema.Types.ObjectId,
-    investmentHoldings: [
-        {
-            symbol: String,
-            quantity: Number,
-            adjustedCostBase: Number,
-            currentValue: Number,
-        },
-    ],
-}, { timestamps: true });
-exports.RRSPAccount = mongoose_1.default.model("RRSPAccount", rrspAccountSchema);
+const snapshotSchema = new mongoose_1.Schema({
+    userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    profileIndex: { type: Number, required: true },
+    savedAt: { type: Date, default: Date.now },
+    accounts: mongoose_1.Schema.Types.Mixed,
+    transactions: mongoose_1.Schema.Types.Mixed,
+    budgets: mongoose_1.Schema.Types.Mixed,
+    bills: mongoose_1.Schema.Types.Mixed,
+    goals: mongoose_1.Schema.Types.Mixed,
+    netWorthSnapshots: mongoose_1.Schema.Types.Mixed,
+}, { strict: false });
+exports.DemoSnapshot = mongoose_1.default.model("DemoSnapshot", snapshotSchema);

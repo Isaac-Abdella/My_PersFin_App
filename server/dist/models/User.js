@@ -43,6 +43,7 @@ const userSchema = new mongoose_1.Schema({
     province: { type: String, default: "ON" },
     resetToken: String,
     resetTokenExpires: Date,
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    demoProfileIndex: { type: Number, default: null },
 });
 exports.User = mongoose_1.default.model("User", userSchema);

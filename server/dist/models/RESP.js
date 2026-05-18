@@ -33,43 +33,29 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RRSPAccount = void 0;
+exports.RESP = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const rrspAccountSchema = new mongoose_1.Schema({
+const beneficiarySchema = new mongoose_1.Schema({
+    name: { type: String, required: true },
+    birthYear: { type: Number, required: true },
+    sin: String,
+});
+const contributionSchema = new mongoose_1.Schema({
+    year: { type: Number, required: true },
+    amount: { type: Number, required: true, min: 0 },
+    beneficiaryName: { type: String, required: true },
+    cesgReceived: { type: Number, required: true, default: 0, min: 0 },
+    date: { type: Date, required: true },
+    note: String,
+}, { _id: true });
+const respSchema = new mongoose_1.Schema({
     userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
+    planType: { type: String, enum: ["individual", "family"], required: true },
+    institution: { type: String, required: true },
     accountName: { type: String, required: true },
-    institution: { type: String, default: "" },
-    balance: { type: Number, default: 0 },
-    currency: { type: String, default: "CAD" },
-    notes: { type: String, default: "" },
-    contributions: [
-        {
-            year: Number,
-            amount: Number,
-            date: { type: Date, default: Date.now },
-        },
-    ],
-    withdrawals: [
-        {
-            year: Number,
-            amount: Number,
-            date: { type: Date, default: Date.now },
-            withholding: Number,
-        },
-    ],
-    lifetimeContributionRoom: { type: Number, default: 0 },
-    deductionLimit: { type: Number, default: 0 },
-    annualContributionLimit: { type: Number, default: 31560 }, // 2024 limit
-    currentYearUsed: { type: Number, default: 0 },
-    isAccountOwner: { type: Boolean, default: true },
-    spousalAccountId: mongoose_1.Schema.Types.ObjectId,
-    investmentHoldings: [
-        {
-            symbol: String,
-            quantity: Number,
-            adjustedCostBase: Number,
-            currentValue: Number,
-        },
-    ],
+    beneficiaries: [beneficiarySchema],
+    currentBalance: { type: Number, required: true, default: 0, min: 0 },
+    contributions: [contributionSchema],
+    notes: String,
 }, { timestamps: true });
-exports.RRSPAccount = mongoose_1.default.model("RRSPAccount", rrspAccountSchema);
+exports.RESP = mongoose_1.default.model("RESP", respSchema);
