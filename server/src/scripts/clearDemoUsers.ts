@@ -16,6 +16,7 @@ import { Budget } from "../models/Budget";
 import { Bill } from "../models/Bill";
 import { Goal } from "../models/Goal";
 import { NetWorthSnapshot } from "../models/NetWorthSnapshot";
+import { DemoSnapshot } from "../models/DemoSnapshot";
 
 const DEMO_EMAILS = Array.from({ length: 10 }, (_, i) => `user_test${i + 1}@demo.com`);
 
@@ -35,6 +36,7 @@ async function main() {
       Goal.deleteMany({ userId: uid }),
       NetWorthSnapshot.deleteMany({ userId: uid }),
     ]);
+    await DemoSnapshot.deleteOne({ userId: uid });
     await User.deleteOne({ _id: uid });
     console.log(`  ✓  ${email} removed — ${txns.deletedCount} txns, ${accts.deletedCount} accounts, ${budgets.deletedCount} budgets, ${bills.deletedCount} bills, ${goals.deletedCount} goals, ${snapshots.deletedCount} snapshots`);
   }

@@ -9,6 +9,7 @@ export interface IUser extends Document {
   resetToken?: string;
   resetTokenExpires?: Date;
   createdAt: Date;
+  demoProfileIndex?: number; // 1–10 when user has demo data loaded; undefined otherwise
 }
 
 const userSchema = new Schema<IUser>({
@@ -19,7 +20,8 @@ const userSchema = new Schema<IUser>({
   province: { type: String, default: "ON" },
   resetToken: String,
   resetTokenExpires: Date,
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  demoProfileIndex: { type: Number, default: null },
 });
 
 export const User = mongoose.model<IUser>("User", userSchema);

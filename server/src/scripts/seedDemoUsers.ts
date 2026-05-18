@@ -21,21 +21,35 @@ import { Bill } from "../models/Bill";
 import { Goal } from "../models/Goal";
 import { NetWorthSnapshot } from "../models/NetWorthSnapshot";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Seeded PRNG (Mulberry32) ──────────────────────────────────────────────────
 
-const NOW = new Date();
+export function mulberry32(seed: number): () => number {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+// _rng and _now are set by seedProfile before each run so that "Reset" can use
+// a deterministic seed (same data every time) while "Regenerate" uses Math.random.
+
+let _rng: () => number = Math.random;
+let _now: Date = new Date();
 
 function rnd(min: number, max: number): number {
-  return parseFloat((Math.random() * (max - min) + min).toFixed(2));
+  return parseFloat((_rng() * (max - min) + min).toFixed(2));
 }
 function rndInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(_rng() * (max - min + 1)) + min;
 }
 function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  return arr[Math.floor(_rng() * arr.length)];
 }
 function txnDate(monthsAgo: number, day: number): Date {
-  const d = new Date(NOW);
+  const d = new Date(_now);
   d.setDate(1);
   d.setHours(rndInt(8, 20), rndInt(0, 59), 0, 0);
   d.setMonth(d.getMonth() - monthsAgo);
@@ -45,12 +59,12 @@ function txnDate(monthsAgo: number, day: number): Date {
 }
 /** Returns all bi-weekly pay dates going back `months` months. */
 function payDates(months: number): Date[] {
-  const anchor = new Date(NOW);
+  const anchor = new Date(_now);
   anchor.setMonth(anchor.getMonth() - months);
   anchor.setDate(1);
   const dates: Date[] = [];
   const cur = new Date(anchor);
-  while (cur <= NOW) {
+  while (cur <= _now) {
     dates.push(new Date(cur));
     cur.setDate(cur.getDate() + 14);
   }
@@ -658,7 +672,7 @@ function buildTransactions(
     txns.push({ userId, accountId, type, amount: parseFloat(amount.toFixed(2)), category, description, date, source: "manual" });
   };
 
-  // ── Opening balances (24 months ago) ──────────────────────────────────────────
+  // ── Opening balances (36 months ago) ──────────────────────────────────────────
   for (const acct of profile.accounts) {
     if (acct.openingBalance <= 0) continue;
     const accountId = acctMap.get(acct.key);
@@ -671,20 +685,20 @@ function buildTransactions(
       amount: acct.openingBalance,
       category: isLiability ? "Opening Balance (Debt)" : "Opening Balance",
       description: `Opening Balance — ${acct.name}`,
-      date: txnDate(24, 1),
+      date: txnDate(36, 1),
       source: "manual",
     });
   }
 
-  // ── Pay dates over 24 months ──────────────────────────────────────────────────
-  const pays = payDates(24);
+  // ── Pay dates over 36 months ──────────────────────────────────────────────────
+  const pays = payDates(36);
   for (const date of pays) {
     add("income", rnd(profile.netPayBiweekly * 0.96, profile.netPayBiweekly * 1.04), "Employment Income", profile.payDesc, date, profile.payAccountKey);
   }
 
   // ── GST/HST Credit (quarterly — Jan, Apr, Jul, Oct) ──────────────────────────
-  for (let m = 23; m >= 0; m--) {
-    const base = new Date(NOW);
+  for (let m = 35; m >= 0; m--) {
+    const base = new Date(_now);
     base.setDate(1);
     base.setMonth(base.getMonth() - m);
     if ([0, 3, 6, 9].includes(base.getMonth())) {
@@ -697,7 +711,7 @@ function buildTransactions(
   }
 
   // ── Monthly spending rules ────────────────────────────────────────────────────
-  for (let m = 23; m >= 0; m--) {
+  for (let m = 35; m >= 0; m--) {
     for (const rule of profile.spending) {
       const count = Math.round(rule.perMonth + rnd(-0.5, 0.5));
       for (let i = 0; i < count; i++) {
@@ -768,10 +782,10 @@ function buildSnapshots(userId: any, profile: DemoProfile): any[] {
     else baseAssets += acct.openingBalance;
   }
 
-  // Generate quarterly snapshots over 2 years
-  for (let m = 24; m >= 0; m -= 3) {
-    const growthFactor = 1 + (0.005 * (24 - m)); // slight growth over time
-    const paydownFactor = 1 - (0.01 * (24 - m)); // liabilities decrease over time
+  // Generate quarterly snapshots over 3 years
+  for (let m = 36; m >= 0; m -= 3) {
+    const growthFactor = 1 + (0.005 * (36 - m)); // slight growth over time
+    const paydownFactor = 1 - (0.01 * (36 - m)); // liabilities decrease over time
     const totalAssets = Math.round(baseAssets * growthFactor);
     const totalLiabilities = Math.max(0, Math.round(baseLiabilities * paydownFactor));
     const netWorth = totalAssets - totalLiabilities;
@@ -809,9 +823,68 @@ function buildSnapshots(userId: any, profile: DemoProfile): any[] {
   return snapshots;
 }
 
+// ── Seed options ──────────────────────────────────────────────────────────────
+
+export interface SeedOpts {
+  /** Custom PRNG — pass mulberry32(n) for deterministic data, omit for Math.random */
+  rng?: () => number;
+  /** Base date for transaction history — omit to use current date */
+  baseDate?: Date;
+}
+
+// ── Data-only seeder (for an EXISTING user — no User doc created) ─────────────
+
+export async function seedDataForUser(userId: any, profile: DemoProfile, opts?: SeedOpts): Promise<void> {
+  _rng = opts?.rng ?? Math.random;
+  _now = opts?.baseDate ?? new Date();
+
+  const acctMap = new Map<string, any>();
+  for (const def of profile.accounts) {
+    const acct = await Account.create({
+      userId, name: def.name, type: def.type,
+      institution: def.institution, balance: 0, currency: "CAD",
+    } as any);
+    acctMap.set(def.key, acct._id);
+  }
+
+  const txns = buildTransactions(userId, acctMap, profile);
+  await Transaction.insertMany(txns);
+
+  const now = new Date();
+  for (const b of profile.budgets) {
+    await Budget.create({
+      userId, category: b.category, amount: b.amount,
+      period: "monthly", isActive: true,
+      startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+    });
+  }
+  for (const b of profile.bills) {
+    await Bill.create({
+      userId, name: b.name, category: b.category,
+      amount: b.amount, frequency: "monthly",
+      dueDate: b.dueDate, status: "active", isAutoPay: true,
+    });
+  }
+  for (const g of profile.goals) {
+    const targetDate = new Date();
+    targetDate.setMonth(targetDate.getMonth() + g.months);
+    await Goal.create({
+      userId, name: g.name, category: g.category,
+      targetAmount: g.target, currentAmount: g.current,
+      targetDate, priority: g.priority || "medium", status: "active",
+    });
+  }
+  const snapshots = buildSnapshots(userId, profile);
+  await NetWorthSnapshot.insertMany(snapshots);
+}
+
 // ── Seeder for a single profile ───────────────────────────────────────────────
 
-export async function seedProfile(profile: DemoProfile, passwordHash: string): Promise<void> {
+export async function seedProfile(profile: DemoProfile, passwordHash: string, opts?: SeedOpts): Promise<void> {
+  // Apply PRNG and base date for this run (module-level so helpers can use them)
+  _rng  = opts?.rng      ?? Math.random;
+  _now  = opts?.baseDate ?? new Date();
+
   const existing = await User.findOne({ email: profile.email });
   if (existing) {
     console.log(`  ⏭  ${profile.email} already exists — skipping`);

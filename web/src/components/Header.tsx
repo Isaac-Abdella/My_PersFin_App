@@ -2,7 +2,21 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { api } from "../api";
 import "../styles/Header.css";
+
+const DEMO_PROFILE_TITLES = [
+  "The Overwhelmed Graduate",
+  "The Over-Leveraged",
+  "The Single Parent",
+  "The Young Professional",
+  "The Average Canadian",
+  "The Comfortable Professional",
+  "The Power Saver (DINK)",
+  "The Business Owner",
+  "The Pre-Retiree",
+  "The High Net Worth Executive",
+];
 
 interface HeaderProps {
   onSearchOpen?: () => void;
@@ -16,6 +30,29 @@ export default function Header({ onSearchOpen, onMenuToggle }: HeaderProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [demoAction, setDemoAction] = useState<string | null>(null);
+
+  const hasDemoProfile = !!(user?.demoProfileIndex);
+  const demoTitle = hasDemoProfile
+    ? DEMO_PROFILE_TITLES[(user!.demoProfileIndex as number) - 1]
+    : null;
+
+  async function handleDemoAction(action: "regenerate" | "reset" | "clear") {
+    const msgs: Record<string, string> = {
+      regenerate: "Generate a completely new random dataset for this profile? Your current data will be replaced.",
+      reset:      "Restore data to your last Regenerated state? Any edits you've made since then will be undone.",
+      clear:      "Delete ALL data and unlink this profile? This cannot be undone.",
+    };
+    if (!window.confirm(msgs[action])) return;
+    setDemoAction(action);
+    try {
+      await api(`/demo/${action}`, { method: "POST" });
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.message ?? "Something went wrong.");
+      setDemoAction(null);
+    }
+  }
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -126,6 +163,68 @@ export default function Header({ onSearchOpen, onMenuToggle }: HeaderProps) {
         </div>
 
       </div>
+
+      {/* Demo profile bar — full-width red strip at the bottom of the header */}
+      {hasDemoProfile && (
+        <div style={{
+          background: "#dc2626",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "5px 1.25rem",
+          flexWrap: "wrap",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: "#fff",
+        }}>
+          <span style={{
+            background: "#fff",
+            color: "#dc2626",
+            borderRadius: 4,
+            padding: "1px 7px",
+            fontSize: "11px",
+            fontWeight: 800,
+            letterSpacing: "0.05em",
+            flexShrink: 0,
+          }}>
+            DEMO ONLY
+          </span>
+          <span style={{ flexShrink: 0, opacity: 0.9 }}>{demoTitle}</span>
+          <div style={{ flex: 1 }} />
+          {(["regenerate", "reset", "clear"] as const).map(action => (
+            <button
+              key={action}
+              disabled={!!demoAction}
+              onClick={() => handleDemoAction(action)}
+              style={{
+                padding: "3px 11px",
+                borderRadius: 5,
+                border: "1.5px solid rgba(255,255,255,0.7)",
+                background: demoAction === action ? "rgba(255,255,255,0.3)" : "transparent",
+                color: "#fff",
+                cursor: demoAction ? "not-allowed" : "pointer",
+                fontWeight: 700,
+                fontSize: "11px",
+                whiteSpace: "nowrap",
+                opacity: demoAction && demoAction !== action ? 0.5 : 1,
+              }}
+            >
+              {demoAction === action
+                ? "Working…"
+                : action === "regenerate" ? "Regenerate"
+                : action === "reset"      ? "Reset Data"
+                : "Clear Data"}
+            </button>
+          ))}
+          <Link
+            to="/demo-profiles"
+            style={{ color: "rgba(255,255,255,0.8)", fontSize: "11px", marginLeft: 4, textDecoration: "underline" }}
+          >
+            Switch Profile
+          </Link>
+        </div>
+      )}
+
     </header>
   );
 }

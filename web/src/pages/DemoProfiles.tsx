@@ -106,8 +106,8 @@ export default function DemoProfiles() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [copied, setCopied] = useState<string | null>(null);
-  const [resetting, setResetting] = useState(false);
-  const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState<number | null>(null); // profileIndex being activated
+  const [statusMsg, setStatusMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const copyCredentials = (email: string) => {
     navigator.clipboard.writeText(`Email: ${email}\nPassword: ${PASSWORD}`);
@@ -115,42 +115,31 @@ export default function DemoProfiles() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const handleLogin = (email: string) => {
-    // Pre-fill isn't possible without state, so just navigate to login
-    navigate("/login");
-  };
-
-  const clearData = async () => {
-    if (!confirm("This will permanently delete ALL data for this demo account. Continue?")) return;
-    setResetting(true);
-    setResetMsg(null);
+  const handleActivate = async (profileIndex: number) => {
+    const p = PROFILES[profileIndex - 1];
+    if (!confirm(`Load the "${p.title}" profile into your account? Your current data will be replaced.`)) return;
+    setLoading(profileIndex);
+    setStatusMsg(null);
     try {
-      const res = await fetch("/api/demo/clear", { method: "POST", credentials: "include" });
+      const res = await fetch("/api/demo/activate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileIndex }),
+      });
       const data = await res.json();
-      setResetMsg(data.message);
+      if (res.ok) {
+        setStatusMsg({ ok: true, text: data.message });
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        setStatusMsg({ ok: false, text: data.message || "Failed." });
+      }
     } catch {
-      setResetMsg("Request failed — is the server running?");
+      setStatusMsg({ ok: false, text: "Request failed — is the server running?" });
     } finally {
-      setResetting(false);
+      setLoading(null);
     }
   };
-
-  const resetData = async () => {
-    if (!confirm("This will wipe and re-seed this demo account's original data. This may take a moment. Continue?")) return;
-    setResetting(true);
-    setResetMsg(null);
-    try {
-      const res = await fetch("/api/demo/reset", { method: "POST", credentials: "include" });
-      const data = await res.json();
-      setResetMsg(data.message);
-    } catch {
-      setResetMsg("Request failed — is the server running?");
-    } finally {
-      setResetting(false);
-    }
-  };
-
-  const isDemoUser = user && /^user_test\d+@demo\.com$/.test((user as any).email || "");
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
@@ -163,44 +152,35 @@ export default function DemoProfiles() {
           10 pre-seeded Canadian households — from a debt-laden graduate to a high-net-worth executive —
           each with 2 years of realistic transaction history. Log in to explore any profile.
         </p>
-        <div style={{
-          display: "inline-block", marginTop: 16,
-          background: "#eff6ff", border: "1px solid #bfdbfe",
-          borderRadius: 8, padding: "10px 20px", fontSize: "0.82rem", color: "#1d4ed8",
-        }}>
-          All accounts use password: <strong>{PASSWORD}</strong>
-        </div>
+        {!user && (
+          <div style={{
+            display: "inline-block", marginTop: 16,
+            background: "#eff6ff", border: "1px solid #bfdbfe",
+            borderRadius: 8, padding: "10px 20px", fontSize: "0.82rem", color: "#1d4ed8",
+          }}>
+            All pre-seeded accounts use password: <strong>{PASSWORD}</strong>
+          </div>
+        )}
+        {user && (
+          <div style={{
+            display: "inline-block", marginTop: 16,
+            background: "#f0fdf4", border: "1px solid #86efac",
+            borderRadius: 8, padding: "10px 20px", fontSize: "0.82rem", color: "#166534",
+          }}>
+            Click <strong>Load this Profile</strong> on any card to populate your account with that financial profile's data.
+            Use <strong>Regenerate</strong> / <strong>Reset Data</strong> / <strong>Clear Data</strong> in the red header bar to manage it.
+          </div>
+        )}
       </div>
 
-      {/* Demo user controls */}
-      {isDemoUser && (
+      {statusMsg && (
         <div style={{
-          background: "#fefce8", border: "1px solid #fde68a", borderRadius: 10,
-          padding: "14px 18px", marginBottom: 24, display: "flex", alignItems: "center",
-          gap: 12, flexWrap: "wrap",
+          background: statusMsg.ok ? "#f0fdf4" : "#fef2f2",
+          border: `1px solid ${statusMsg.ok ? "#86efac" : "#fca5a5"}`,
+          borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: "0.82rem",
+          color: statusMsg.ok ? "#166534" : "#991b1b",
         }}>
-          <span style={{ fontSize: "0.85rem", color: "#92400e", flex: 1 }}>
-            You are logged in as a demo account. You can wipe and reload your data below,
-            or log out and log into another demo account to switch profiles.
-          </span>
-          <button
-            onClick={resetData} disabled={resetting}
-            style={{ padding: "7px 16px", borderRadius: 6, background: "#4f46e5", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.8rem" }}
-          >
-            {resetting ? "Working…" : "↺ Reset My Demo Data"}
-          </button>
-          <button
-            onClick={clearData} disabled={resetting}
-            style={{ padding: "7px 16px", borderRadius: 6, background: "#dc2626", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.8rem" }}
-          >
-            🗑 Clear All My Data
-          </button>
-        </div>
-      )}
-
-      {resetMsg && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: "0.82rem", color: "#166534" }}>
-          ✓ {resetMsg}
+          {statusMsg.ok ? "✓" : "✕"} {statusMsg.text}
         </div>
       )}
 
@@ -261,34 +241,47 @@ export default function DemoProfiles() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 onClick={() => copyCredentials(p.email)}
                 style={{
                   flex: 1, padding: "7px 0", borderRadius: 6, fontSize: "0.75rem",
                   border: "1px solid var(--border, #e5e7eb)", background: "transparent",
-                  cursor: "pointer", color: "var(--text, #111)",
+                  cursor: "pointer", color: "var(--text, #111)", minWidth: 110,
                 }}
               >
                 {copied === p.email ? "✓ Copied!" : "📋 Copy Credentials"}
               </button>
               {!user ? (
                 <button
-                  onClick={() => handleLogin(p.email)}
+                  onClick={() => navigate("/login")}
                   style={{
                     flex: 1, padding: "7px 0", borderRadius: 6, fontSize: "0.75rem",
                     border: "none", background: "#4f46e5", color: "#fff",
-                    cursor: "pointer", fontWeight: 600,
+                    cursor: "pointer", fontWeight: 600, minWidth: 110,
                   }}
                 >
                   Log In →
                 </button>
               ) : (
-                <div style={{ flex: 1, padding: "7px 0", borderRadius: 6, fontSize: "0.72rem",
-                  textAlign: "center", color: "var(--text-light, #6b7280)",
-                  border: "1px solid var(--border, #e5e7eb)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  Log out → log in as this user
-                </div>
+                <button
+                  onClick={() => handleActivate(idx + 1)}
+                  disabled={loading !== null}
+                  style={{
+                    flex: 1, padding: "7px 0", borderRadius: 6, fontSize: "0.75rem",
+                    border: "none",
+                    background: user.demoProfileIndex === idx + 1 ? "#059669" : "#2563eb",
+                    color: "#fff", cursor: loading !== null ? "not-allowed" : "pointer",
+                    fontWeight: 600, minWidth: 110,
+                    opacity: loading !== null && loading !== idx + 1 ? 0.6 : 1,
+                  }}
+                >
+                  {loading === idx + 1
+                    ? "Loading…"
+                    : user.demoProfileIndex === idx + 1
+                    ? "✓ Active — Reload"
+                    : "Load this Profile"}
+                </button>
               )}
             </div>
           </div>

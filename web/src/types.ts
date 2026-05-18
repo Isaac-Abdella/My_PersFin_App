@@ -14,6 +14,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   province?: string;
+  demoProfileIndex?: number | null;
 }
 
 export interface Account {

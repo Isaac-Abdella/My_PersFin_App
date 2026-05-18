@@ -37,6 +37,7 @@ router.post("/register", async (req, res, next) => {
           firstName: user.firstName,
           lastName: user.lastName,
           province: user.province || "ON",
+          demoProfileIndex: user.demoProfileIndex ?? null,
         }
       });
     });
@@ -62,7 +63,7 @@ router.post("/login", (req, res, next) => {
         return next(err);
       }
       console.log("Login successful, user:", user);
-      res.json({ user: { id: user.id || user._id, email: user.email } });
+      res.json({ user: { id: user.id || user._id, email: user.email, firstName: user.firstName, lastName: user.lastName, province: user.province || "ON", demoProfileIndex: user.demoProfileIndex ?? null } });
     });
   })(req, res, next);
 });
@@ -84,6 +85,7 @@ router.get("/me", (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       province: user.province || "ON",
+      demoProfileIndex: user.demoProfileIndex ?? null,
     },
   });
 });
